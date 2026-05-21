@@ -1,0 +1,76 @@
+name = "curavend-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "curavend"
+database_id = "0d11f8b5-0dc2-4ccf-a425-19112dafc83a"
+migrations_dir = "../db/src/migrations"
+
+# R2 Storage
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "curavend-uploads"
+
+# KV Namespace
+[[kv_namespaces]]
+binding = "KV"
+id = "4b560c7768464e49a80e31c22e82c8dd"
+
+# Queues
+[[queues.producers]]
+binding = "EVENTS_QUEUE"
+queue = "curavend-events"
+
+[[queues.consumers]]
+queue = "curavend-events"
+max_batch_size = 10
+
+# Workers AI (replaces Anthropic Claude for order parsing)
+[ai]
+binding = "AI"
+
+# Browser Rendering (for server-side HTML→PDF). Requires Workers Paid plan.
+[browser]
+binding = "BROWSER"
+
+# Durable Objects
+[durable_objects]
+bindings = [{ name = "CHAT_ROOM", class_name = "ChatRoom" }]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatRoom"]
+
+# Cron Triggers
+[triggers]
+crons = ["*/15 * * * *", "0 8 * * *", "0 6 1 * *"]
+
+# Environment variables (secrets set via wrangler secret put)
+#
+# Required secrets (set via `wrangler secret put <NAME>`):
+#   JWT_SECRET, JWT_REFRESH_SECRET, RESEND_API_KEY,
+#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+#   ANTHROPIC_API_KEY, ENCRYPTION_KEY
+#
+# Optional secrets:
+#   EPIC_CLIENT_ID, EPIC_CLIENT_SECRET, EPIC_FHIR_BASE_URL — Epic FHIR
+#   TURNSTILE_SECRET_KEY — Cloudflare Turnstile bot-protection on auth
+#                          endpoints. If unset, turnstile middleware no-ops.
+#   R2_ACCOUNT_ID          — R2 account ID (from Cloudflare dashboard)
+#   R2_ACCESS_KEY_ID       — R2 S3 API access key (Cloudflare → R2 → "Manage R2 API Tokens")
+#   R2_SECRET_ACCESS_KEY   — R2 S3 API secret
+#   FERNET_KEY                       — 32-byte URL-safe-base64 Fernet key (athome parity)
+#   EXTERNAL_FULFILLMENT_HMAC_SECRET — shared secret for third-party fulfillment HMAC webhooks
+#   KIT_LETTERS_API_KEY              — optional API key for kit letter catalog sync
+[vars]
+ENVIRONMENT = "production"
+FRONTEND_URL = "https://curavend-web.pages.dev"
+R2_BUCKET_NAME = "curavend-uploads"
+# Kit letter catalog source (athome parity). Leave empty to disable the sync.
+KIT_LETTERS_URL = ""
+# Comma-separated hostnames to block outbound calls to in non-production environments
+DISABLE_OUTBOUND_HOSTS = ""

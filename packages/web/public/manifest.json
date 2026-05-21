@@ -1,0 +1,9 @@
+{
+  "short_name": "Curavend",
+  "name": "Curavend - Healthcare Supply Chain Management",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1BAEE5",
+  "background_color": "#ffffff"
+}

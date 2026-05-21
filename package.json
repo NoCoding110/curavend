@@ -1,0 +1,18 @@
+{
+  "name": "curavend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Curavend - Healthcare Supply Chain Management Platform",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "db:generate": "turbo db:generate --filter=@curavend/db",
+    "db:migrate": "turbo db:migrate --filter=@curavend/db",
+    "deploy:api": "cd packages/api && wrangler deploy",
+    "deploy:web": "cd packages/web && wrangler pages deploy dist"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

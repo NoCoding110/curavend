@@ -1,0 +1,19 @@
+{
+  "name": "@curavend/db",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/schema/index.ts",
+  "types": "./src/schema/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply curavend --local"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.36.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.0",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,35 @@
+// Responsive breakpoints and utilities
+
+@screen-xs: 480px;
+@screen-sm: 576px;
+@screen-md: 768px;
+@screen-lg: 992px;
+@screen-xl: 1200px;
+@screen-xxl: 1600px;
+
+// Hide on mobile
+.hide-mobile {
+  @media (max-width: @screen-md) {
+    display: none !important;
+  }
+}
+
+// Hide on desktop
+.hide-desktop {
+  @media (min-width: @screen-md + 1px) {
+    display: none !important;
+  }
+}
+
+// Responsive padding
+.responsive-padding {
+  padding: 24px;
+
+  @media (max-width: @screen-md) {
+    padding: 16px;
+  }
+
+  @media (max-width: @screen-sm) {
+    padding: 12px;
+  }
+}

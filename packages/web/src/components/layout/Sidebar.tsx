@@ -1,0 +1,418 @@
+import React, { useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Menu } from 'antd';
+import type { MenuProps } from 'antd';
+import {
+  DashboardOutlined,
+  ShoppingCartOutlined,
+  DollarOutlined,
+  MessageOutlined,
+  BarChartOutlined,
+  InboxOutlined,
+  FileProtectOutlined,
+  TeamOutlined,
+  QuestionCircleOutlined,
+  SettingOutlined,
+  CustomerServiceOutlined,
+  ShopOutlined,
+  BankOutlined,
+  UserSwitchOutlined,
+  SafetyCertificateOutlined,
+  ShoppingOutlined,
+  AppstoreOutlined,
+  CreditCardOutlined,
+  AuditOutlined,
+  CheckCircleOutlined,
+  ApiOutlined,
+} from '@ant-design/icons';
+import { useUserRoles } from '../../hooks/useUserRoles';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
+
+type MenuItem = Required<MenuProps>['items'][number];
+
+interface SidebarProps {
+  collapsed: boolean;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAdmin, isHospital, isVendor, isProvider, isSuperVendor, isLab } =
+    useUserRoles();
+  const unreadChatCount = useSelector(
+    (state: RootState) => state.message.unreadChatCount,
+  );
+
+  const menuItems: MenuItem[] = useMemo(() => {
+    // LAB users get a dedicated lab-only menu
+    if (isLab) {
+      return [
+        { key: '/labs', icon: <DashboardOutlined />, label: 'Lab Dashboard' },
+        { key: '/labs/orders', icon: <ShoppingCartOutlined />, label: 'Lab Orders' },
+        { key: '/labs/groups', icon: <FileProtectOutlined />, label: 'Lab Groups' },
+        { key: '/labs/kit-sites', icon: <InboxOutlined />, label: 'Kit Sites' },
+        { key: '/profile', icon: <DashboardOutlined />, label: 'Profile' },
+      ] as MenuItem[];
+    }
+    const items: MenuItem[] = [
+      {
+        key: '/',
+        icon: <DashboardOutlined />,
+        label: 'Dashboard',
+      },
+      {
+        key: '/provider-orders',
+        icon: <ShoppingCartOutlined />,
+        label: 'Orders',
+      },
+    ];
+
+    // Approvals queue — every role with decision authority sees this
+    if (isAdmin || isHospital || isVendor || isProvider || isSuperVendor) {
+      items.push({
+        key: '/approvals',
+        icon: <CheckCircleOutlined />,
+        label: 'Approvals',
+      });
+    }
+
+    // Billing — vendors generate/send invoices; hospitals review/pay them
+    if (isVendor || isHospital || isAdmin || isSuperVendor || isProvider) {
+      items.push({
+        key: '/billing-orders',
+        icon: <DollarOutlined />,
+        label: 'Invoices',
+      });
+    }
+
+    // Inventory — vendors manage their own product catalog; hospitals don't
+    if (isVendor || isAdmin || isSuperVendor) {
+      items.push({
+        key: '/inventory-management',
+        icon: <InboxOutlined />,
+        label: 'Inventory',
+      });
+    }
+
+    // Contract & Pricing — both sides view their contracts
+    if (isVendor || isHospital || isAdmin || isSuperVendor || isProvider) {
+      items.push({
+        key: '/contract-pricing',
+        icon: <FileProtectOutlined />,
+        label: 'Contract & Pricing',
+      });
+    }
+
+    // Customer POs — hospitals manage buyer-side purchase orders
+    if (isHospital || isAdmin) {
+      items.push({
+        key: '/customer-purchase-orders',
+        icon: <FileProtectOutlined />,
+        label: 'Customer POs',
+      });
+    }
+
+    // Recurring orders — schedules for hospital + vendor
+    if (isHospital || isVendor || isAdmin) {
+      items.push({
+        key: '/recurrence',
+        icon: <AppstoreOutlined />,
+        label: 'Recurring Orders',
+      });
+    }
+
+    // Catalog — hospitals browse products from contracted vendors; vendors browse own
+    if (isHospital || isVendor || isAdmin) {
+      items.push({
+        key: '/sku-catalog',
+        icon: <ShoppingOutlined />,
+        label: 'Catalog',
+      });
+    }
+
+    // Price lookup — hospital + vendor + admin
+    if (isHospital || isVendor || isAdmin) {
+      items.push({
+        key: '/price-lookup',
+        icon: <ShopOutlined />,
+        label: 'Price Lookup',
+      });
+    }
+
+    // Bulk tracking — vendor + admin
+    if (isVendor || isAdmin) {
+      items.push({
+        key: '/bulk-tracking',
+        icon: <InboxOutlined />,
+        label: 'Bulk Tracking',
+      });
+    }
+
+    // SKU groups — vendor + admin
+    if (isVendor || isAdmin) {
+      items.push({
+        key: '/sku-groups',
+        icon: <AppstoreOutlined />,
+        label: 'SKU Groups',
+      });
+    }
+
+    // Purchase Orders — vendors and admins; hospitals use standard orders
+    if (isAdmin || isVendor || isSuperVendor) {
+      items.push({
+        key: '/purchase-orders',
+        icon: <ShoppingOutlined />,
+        label: 'Purchase Orders',
+      });
+    }
+
+    // Consignment — vendors manage closets at hospital locations
+    if (isAdmin || isVendor || isSuperVendor) {
+      items.push({
+        key: '/consignment',
+        icon: <AppstoreOutlined />,
+        label: 'Consignment',
+      });
+    }
+
+    // Facility Vendors — hospitals manage their approved vendor list
+    if (isHospital || isProvider) {
+      items.push({
+        key: '/facility-vendors',
+        icon: <TeamOutlined />,
+        label: 'My Vendors',
+      });
+      items.push({
+        key: '/vendor-coverage',
+        icon: <ShopOutlined />,
+        label: 'Vendor Coverage',
+      });
+    }
+
+    // My Hospitals — vendors view the hospitals they have relationships with
+    if (isVendor) {
+      items.push({
+        key: '/facility-vendors',
+        icon: <BankOutlined />,
+        label: 'My Hospitals',
+      });
+    }
+
+    // Vendor branches — vendors manage their warehouses / fitting centers
+    if (isVendor || isAdmin || isSuperVendor) {
+      items.push({
+        key: '/vendor-locations',
+        icon: <ShopOutlined />,
+        label: 'Locations',
+      });
+      items.push({
+        key: '/vendor-skus',
+        icon: <AppstoreOutlined />,
+        label: 'SKU Catalog',
+      });
+      items.push({
+        key: '/stock-feeds',
+        icon: <InboxOutlined />,
+        label: 'Stock Feeds',
+      });
+      items.push({
+        key: '/erp-connectors',
+        icon: <ApiOutlined />,
+        label: 'ERP Connectors',
+      });
+    }
+
+    // Facilities, Departments, Physicians — hospital users only
+    if (isHospital) {
+      items.push(
+        {
+          key: '/hospital-facilities',
+          icon: <BankOutlined />,
+          label: 'Facilities',
+        },
+        {
+          key: '/hospital-departments',
+          icon: <AppstoreOutlined />,
+          label: 'Departments',
+        },
+        {
+          key: '/hospital-physicians',
+          icon: <TeamOutlined />,
+          label: 'Physicians',
+        },
+      );
+    }
+
+    // Chat
+    items.push({
+      key: '/chat',
+      icon: <MessageOutlined />,
+      label: unreadChatCount > 0 ? `Chat (${unreadChatCount})` : 'Chat',
+    });
+
+    // Reporting
+    const reportingChildren: MenuItem[] = [
+      { key: '/reporting/spend-by-vendor', label: 'Spend by Vendor' },
+      { key: '/reporting/spend-by-hcpc', label: 'Top 10 HCPC' },
+      { key: '/reporting/spend-by-month', label: 'Spend by Month' },
+      { key: '/reporting/spend-by-physician', label: 'Spend by Physician' },
+      { key: '/reporting/spend-by-facility', label: 'Spend by Facility' },
+      { key: '/reporting/spend-by-department', label: 'Spend by Department' },
+      { key: '/reporting/vendor-kpis', label: 'Vendor KPIs' },
+      { key: '/reporting/vendor-scorecard', label: 'Vendor Scorecard' },
+    ];
+    if (isAdmin) {
+      reportingChildren.push(
+        { key: '/reporting/compliance/users', label: 'Compliance: Users' },
+        { key: '/reporting/compliance/credentials', label: 'Compliance: Credentials' },
+        { key: '/reporting/unbilled-transactions', label: 'Unbilled Transactions' },
+      );
+    }
+    items.push({
+      key: '/reporting/spend',
+      icon: <BarChartOutlined />,
+      label: 'Reporting',
+      children: reportingChildren,
+    });
+
+    // Admin-only management section
+    if (isAdmin) {
+      items.push(
+        { type: 'divider' },
+        {
+          key: 'management-group',
+          label: 'Platform Management',
+          type: 'group',
+          children: [
+            {
+              key: '/vendors',
+              icon: <ShopOutlined />,
+              label: 'Manage Vendors',
+            },
+            {
+              key: '/hospitals',
+              icon: <BankOutlined />,
+              label: 'Manage Hospitals',
+            },
+            {
+              key: '/facility-vendors',
+              icon: <TeamOutlined />,
+              label: 'Facility–Vendor Links',
+            },
+            {
+              key: '/admin',
+              icon: <SafetyCertificateOutlined />,
+              label: 'Admin Panel',
+            },
+            {
+              key: '/admin/approvals',
+              icon: <UserSwitchOutlined />,
+              label: 'User Approvals',
+            },
+            {
+              key: '/admin/file-access-log',
+              icon: <AuditOutlined />,
+              label: 'File Access Log',
+            },
+            {
+              key: '/admin/integration-log',
+              icon: <AuditOutlined />,
+              label: 'Integration Log',
+            },
+            {
+              key: '/admin/workflows',
+              icon: <AuditOutlined />,
+              label: 'Workflows',
+            },
+            {
+              key: '/subscription',
+              icon: <CreditCardOutlined />,
+              label: 'Subscription Plans',
+            },
+          ],
+        },
+        { type: 'divider' },
+      );
+    }
+
+    // Notification preferences — hospital/vendor admins
+    if (isHospital || isVendor || isAdmin) {
+      items.push({
+        key: '/notification-preferences',
+        icon: <SettingOutlined />,
+        label: 'Notification Settings',
+      });
+    }
+
+    // Settings - admin only
+    if (isAdmin) {
+      items.push({
+        key: '/setting',
+        icon: <SettingOutlined />,
+        label: 'Settings',
+      });
+    }
+
+    // Help & Support
+    items.push({
+      key: '/help-and-support',
+      icon: <CustomerServiceOutlined />,
+      label: 'Help & Support',
+    });
+
+    // FAQ
+    items.push({
+      key: '/faq',
+      icon: <QuestionCircleOutlined />,
+      label: 'FAQ',
+    });
+
+    return items;
+  }, [isAdmin, isHospital, isVendor, isProvider, isSuperVendor, isLab, unreadChatCount]);
+
+  const onClick: MenuProps['onClick'] = ({ key }) => {
+    if (key === 'management-group') return;
+    navigate(key);
+  };
+
+  const selectedKey = useMemo(() => {
+    const path = location.pathname;
+    if (path === '/') return '/';
+
+    // Collect all keys (including nested children) with their full key strings
+    const allKeys: string[] = [];
+    const collect = (items: MenuItem[]) => {
+      for (const item of items) {
+        if (!item || !('key' in item)) continue;
+        const key = item.key as string;
+        if (key && key !== '/' && key !== 'management-group') allKeys.push(key);
+        if ('children' in item && Array.isArray((item as any).children)) {
+          collect((item as any).children);
+        }
+      }
+    };
+    collect(menuItems);
+
+    // Find longest matching key (most specific match wins)
+    const match = allKeys
+      .filter((key) => path === key || path.startsWith(key + '/'))
+      .sort((a, b) => b.length - a.length)[0];
+
+    return match ?? path;
+  }, [location.pathname, menuItems]);
+
+  return (
+    <Menu
+      theme="dark"
+      mode="inline"
+      selectedKeys={[selectedKey]}
+      defaultOpenKeys={collapsed ? [] : ['/reporting/spend']}
+      items={menuItems}
+      onClick={onClick}
+      style={{ borderRight: 0 }}
+    />
+  );
+};
+
+export default Sidebar;
