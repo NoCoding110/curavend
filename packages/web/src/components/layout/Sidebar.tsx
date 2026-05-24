@@ -79,14 +79,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       },
     ];
 
-    // DME order wizard — quick-create for hospital, provider, admin
-    if (isHospital || isProvider || isAdmin) {
-      items.push({
-        key: '/create-dme-order',
-        icon: <MedicineBoxOutlined />,
-        label: 'New DME Order',
-      });
-    }
+    // (DME wizard removed from sidebar — it's now reachable from the
+    // Orders list page via the Create Order ▾ dropdown.)
 
     // Approvals queue — every role with decision authority sees this
     if (isAdmin || isHospital || isVendor || isProvider || isSuperVendor) {

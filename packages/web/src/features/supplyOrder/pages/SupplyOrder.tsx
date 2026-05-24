@@ -38,6 +38,8 @@ import {
   BookOutlined,
   SaveOutlined,
   CheckOutlined,
+  MedicineBoxOutlined,
+  ShoppingCartOutlined,
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import type { ColumnsType, ColumnType, TablePaginationConfig } from 'antd/es/table';
@@ -1031,14 +1033,29 @@ const SupplyOrder: React.FC = () => {
               <Button icon={<ReloadOutlined />} onClick={handleRefresh} />
             </Tooltip>
             {can('orders', 'WRITE') && (
-              <Button
+              <Dropdown.Button
                 type="primary"
                 icon={<PlusOutlined />}
-                style={{ background: BRAND_COLOR, borderColor: BRAND_COLOR }}
                 onClick={() => navigate('/create-order')}
+                style={{ background: BRAND_COLOR, borderColor: BRAND_COLOR }}
+                menu={{
+                  items: [
+                    {
+                      key: '/create-order',
+                      icon: <ShoppingCartOutlined />,
+                      label: 'New supply order',
+                    },
+                    {
+                      key: '/create-dme-order',
+                      icon: <MedicineBoxOutlined />,
+                      label: 'New DME order',
+                    },
+                  ],
+                  onClick: ({ key }) => navigate(key),
+                }}
               >
                 Create Order
-              </Button>
+              </Dropdown.Button>
             )}
           </Space>
         </Col>
