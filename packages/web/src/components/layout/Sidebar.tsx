@@ -307,40 +307,68 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       label: unreadChatCount > 0 ? `Chat (${unreadChatCount})` : 'Chat',
     });
 
-    // Reporting
-    const reportingChildren: MenuItem[] = [
-      { key: '/reporting/spend-by-vendor', label: 'Spend by Vendor' },
-      { key: '/reporting/spend-by-hcpc', label: 'Top 10 HCPC' },
-      { key: '/reporting/spend-by-month', label: 'Spend by Month' },
-      { key: '/reporting/spend-by-physician', label: 'Spend by Physician' },
-      { key: '/reporting/spend-by-facility', label: 'Spend by Facility' },
-      { key: '/reporting/spend-by-department', label: 'Spend by Department' },
-      { key: '/reporting/vendor-kpis', label: 'Vendor KPIs' },
-      { key: '/reporting/vendor-scorecard', label: 'Vendor Scorecard' },
-      { key: '/reporting/forecast', label: 'Demand Forecast' },
-      { key: '/reporting/multi-site-spend', label: 'Multi-Site Spend' },
-      { key: '/reporting/contract-leakage', label: 'Contract Leakage' },
-      { key: '/reporting/department-spend', label: 'Department Spend (Budget)' },
-      { key: '/reporting/cross-site-inventory', label: 'Cross-site Inventory' },
-      { key: '/reporting/vendor-scorecards', label: 'Vendor Scorecards' },
-      { key: '/reporting/hospital-forecast', label: 'Hospital Forecast' },
-      { key: '/reporting/charge-capture-leakage', label: 'Charge Capture Leakage' },
-      { key: '/reporting/price-variance', label: 'Price Variance' },
-      { key: '/reporting/clinical-consumption', label: 'Clinical Consumption' },
-    ];
-    if (isAdmin) {
-      reportingChildren.push(
-        { key: '/reporting/compliance/users', label: 'Compliance: Users' },
-        { key: '/reporting/compliance/credentials', label: 'Compliance: Credentials' },
-        { key: '/reporting/unbilled-transactions', label: 'Unbilled Transactions' },
-      );
+    // Reporting — built per-persona so each role only sees reports they
+    // can act on. Order matches the four themed buckets in PV1/2/3:
+    //   Spend (procurement) → Vendor performance → Operations → Compliance.
+    const reportingChildren: MenuItem[] = [];
+
+    // ─── Spend reports — anyone whose persona transacts in $ ──────────────
+    if (isAdmin || isHospital || isProvider || isVendor || isSuperVendor) {
+      reportingChildren.push({ key: '/reporting/spend-by-vendor', label: 'Spend by Vendor' });
+      reportingChildren.push({ key: '/reporting/spend-by-hcpc', label: 'Top 10 HCPC' });
+      reportingChildren.push({ key: '/reporting/spend-by-month', label: 'Spend by Month' });
     }
-    items.push({
-      key: '/reporting/spend',
-      icon: <BarChartOutlined />,
-      label: 'Reporting',
-      children: reportingChildren,
-    });
+    // These break out by hospital-internal axes — only hospital-side personas.
+    if (isAdmin || isHospital || isProvider) {
+      reportingChildren.push({ key: '/reporting/spend-by-physician', label: 'Spend by Physician' });
+      reportingChildren.push({ key: '/reporting/spend-by-facility', label: 'Spend by Facility' });
+      reportingChildren.push({ key: '/reporting/spend-by-department', label: 'Spend by Department' });
+      reportingChildren.push({ key: '/reporting/department-spend', label: 'Department Spend (Budget)' });
+      reportingChildren.push({ key: '/reporting/multi-site-spend', label: 'Multi-Site Spend' });
+      reportingChildren.push({ key: '/reporting/contract-leakage', label: 'Contract Leakage' });
+      reportingChildren.push({ key: '/reporting/price-variance', label: 'Price Variance' });
+    }
+
+    // ─── Vendor performance — hospital/admin see all, vendor sees own ─────
+    if (isAdmin || isHospital || isVendor || isSuperVendor) {
+      reportingChildren.push({ key: '/reporting/vendor-kpis', label: 'Vendor KPIs' });
+      reportingChildren.push({ key: '/reporting/vendor-scorecards', label: 'Vendor Scorecards' });
+    }
+
+    // ─── Forecasts ────────────────────────────────────────────────────────
+    if (isAdmin || isLab) {
+      reportingChildren.push({ key: '/reporting/forecast', label: 'Lab Demand Forecast' });
+    }
+    if (isAdmin || isHospital) {
+      reportingChildren.push({ key: '/reporting/hospital-forecast', label: 'Hospital Forecast' });
+    }
+
+    // ─── Inventory + clinical (hospital + lab) ────────────────────────────
+    if (isAdmin || isLab || isVendor || isSuperVendor) {
+      reportingChildren.push({ key: '/reporting/cross-site-inventory', label: 'Cross-site Inventory' });
+    }
+    if (isAdmin || isHospital) {
+      reportingChildren.push({ key: '/reporting/charge-capture-leakage', label: 'Charge Capture Leakage' });
+      reportingChildren.push({ key: '/reporting/clinical-consumption', label: 'Clinical Consumption' });
+    }
+
+    // ─── Admin-only ───────────────────────────────────────────────────────
+    if (isAdmin) {
+      reportingChildren.push({ key: '/reporting/compliance/users', label: 'Compliance: Users' });
+      reportingChildren.push({ key: '/reporting/compliance/credentials', label: 'Compliance: Credentials' });
+      reportingChildren.push({ key: '/reporting/unbilled-transactions', label: 'Unbilled Transactions' });
+    }
+
+    // Suppress the Reporting submenu entirely if this persona has no
+    // applicable reports (rare — only happens for unscoped roles).
+    if (reportingChildren.length > 0) {
+      items.push({
+        key: '/reporting/spend',
+        icon: <BarChartOutlined />,
+        label: 'Reporting',
+        children: reportingChildren,
+      });
+    }
 
     // Admin-only management section
     if (isAdmin) {
