@@ -55,7 +55,7 @@ import { formularyApi } from '../../../api/formulary';
 
 const { Title, Text, Paragraph } = Typography;
 
-const PageWrap = styled.div`padding: 24px; max-width: 1100px; margin: 0 auto;`;
+const PageWrap = styled.div`padding: 24px;`;
 const StepCard = styled(Card)`margin-bottom: 16px;`;
 
 interface LineItem {
