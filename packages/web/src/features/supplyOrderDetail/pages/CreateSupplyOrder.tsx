@@ -271,6 +271,34 @@ const CreateSupplyOrder: React.FC = () => {
     void lookupFormulary(itemKey, sub.substituteHcpcCode);
   };
   const hcpcTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Wizard-routing check: ask the API to categorize every HCPC the user
+  // has entered, and recommend the right wizard. Surfaces a banner when
+  // the user's lines need the DME wizard's stricter regulatory flow.
+  const [wizardRecommendation, setWizardRecommendation] = useState<{
+    recommendedWizard: 'DME' | 'SUPPLY';
+    dmeCodes: string[];
+  } | null>(null);
+  useEffect(() => {
+    const codes = hcpcItems.map((i) => i.code?.trim().toUpperCase()).filter(Boolean) as string[];
+    if (codes.length === 0) { setWizardRecommendation(null); return; }
+    // Debounce — the user is typing.
+    const t = setTimeout(async () => {
+      try {
+        const { post } = await import('../../../api/client');
+        const r = await post<any>('/hcpc-codes/categorize', { codes });
+        const dmeItems = (r.items ?? []).filter((i: any) =>
+          i.category === 'DME' || i.category === 'ORTHOTIC' || i.category === 'PROSTHETIC',
+        );
+        setWizardRecommendation({
+          recommendedWizard: r.recommendedWizard,
+          dmeCodes: dmeItems.map((i: any) => i.code),
+        });
+      } catch { /* silent */ }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [hcpcItems]);
+
   const [icd10Options, setIcd10Options] = useState<any[]>([]);
   const [icd10Loading, setIcd10Loading] = useState(false);
   const icd10Timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1043,6 +1071,33 @@ const CreateSupplyOrder: React.FC = () => {
           </Button>
         }
       >
+        {/* Wizard-routing banner: warn when the line items need DME flow. */}
+        {wizardRecommendation?.recommendedWizard === 'DME' && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="DME codes detected — consider the DME order wizard"
+            description={
+              <span>
+                {wizardRecommendation.dmeCodes.join(', ')}{' '}
+                {wizardRecommendation.dmeCodes.length === 1 ? 'is a' : 'are'} Medicare-regulated DME
+                code{wizardRecommendation.dmeCodes.length === 1 ? '' : 's'}. The DME wizard collects
+                the face-to-face date, length of need, DWO and other documentation Medicare requires
+                for these claims.
+              </span>
+            }
+            action={
+              <Button
+                size="small"
+                type="primary"
+                onClick={() => navigate('/create-dme-order')}
+              >
+                Switch to DME order
+              </Button>
+            }
+          />
+        )}
         {hcpcItems.length === 0 ? (
           <Alert message="Add at least one HCPC code." type="info" showIcon />
         ) : (

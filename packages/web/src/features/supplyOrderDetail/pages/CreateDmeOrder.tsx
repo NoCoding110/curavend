@@ -110,6 +110,25 @@ export const CreateDmeOrder: React.FC = () => {
   ]);
   const [lcdLoading, setLcdLoading] = useState<Record<string, boolean>>({});
 
+  // Wizard-routing check: if every line categorizes to SUPPLY (or has no DME
+  // code at all), suggest the simpler supply wizard. The DME wizard's extra
+  // fields (F2F, DWO, length of need, etc.) are wasted effort otherwise.
+  const [wizardRecommendation, setWizardRecommendation] = useState<{
+    recommendedWizard: 'DME' | 'SUPPLY';
+  } | null>(null);
+  useEffect(() => {
+    const codes = lines.map((l) => l.hcpcCode?.trim().toUpperCase()).filter(Boolean) as string[];
+    if (codes.length === 0) { setWizardRecommendation(null); return; }
+    const t = setTimeout(async () => {
+      try {
+        const { post } = await import('../../../api/client');
+        const r = await post<any>('/hcpc-codes/categorize', { codes });
+        setWizardRecommendation({ recommendedWizard: r.recommendedWizard });
+      } catch { /* silent */ }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [lines]);
+
   // Step 4: Payor
   const [payors, setPayors] = useState<Array<{ id: string; name: string; kind: string }>>([]);
   const [payorId, setPayorId] = useState<string | undefined>();
@@ -363,6 +382,21 @@ export const CreateDmeOrder: React.FC = () => {
               </Row>
             </Form>
             <Divider>HCPC Items</Divider>
+            {/* Wizard-routing banner: warn if no line is actually DME. */}
+            {wizardRecommendation?.recommendedWizard === 'SUPPLY' && (
+              <Alert
+                type="info"
+                showIcon
+                style={{ marginBottom: 12 }}
+                message="None of these codes look like DME"
+                description="The DME wizard is sized for Medicare-regulated DMEPOS claims (face-to-face, DWO, LCD checks). For plain supplies, the simpler supply wizard skips those fields."
+                action={
+                  <Button size="small" onClick={() => navigate('/create-order')}>
+                    Switch to supply order
+                  </Button>
+                }
+              />
+            )}
             {lines.map((l) => (
               <Card key={l.key} size="small" style={{ marginBottom: 12, background: '#fafafa' }}>
                 <Row gutter={8} align="middle">
