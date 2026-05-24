@@ -154,7 +154,6 @@ for the full timeline.
 
 ## Project history
 
-This repo is the third major iteration of the platform (originally ProxyIQ).
 Session 17 closed 26 procurement-workflow gaps spanning operational,
 financial, compliance, and decision-support themes. See
 `docs/training/README.md` for a session-by-session feature timeline.

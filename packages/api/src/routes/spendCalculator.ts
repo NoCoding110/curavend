@@ -2,8 +2,6 @@
  * Spend Calculator — estimates projected spend for a set of HCPC codes
  * and quantities, applying the best available fee schedule rate:
  * state rate > custom fee schedule > Medicare rate.
- *
- * Matches ProxyIQ's /spend-calculator Lambda.
  */
 import { Hono } from 'hono';
 import { eq, and } from 'drizzle-orm';
