@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useBreadcrumbOverride } from '../../../contexts/BreadcrumbContext';
 import {
   Card,
   Row,
@@ -31,8 +32,20 @@ import styled from 'styled-components';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { invoicesApi } from '../../../api/invoices';
+import { matchingApi, type ThreeWayMatch } from '../../../api/receiving';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store/store';
+import { usePermissions } from '../../../hooks/usePermissions';
+
+const MATCH_COLOR: Record<string, string> = {
+  PERFECT: 'green',
+  QTY_VARIANCE: 'orange',
+  PRICE_VARIANCE: 'red',
+  NO_RECEIPT: 'gold',
+  NO_PO: 'magenta',
+  CONDITION_BAD: 'red',
+  AMBIGUOUS: 'purple',
+};
 
 const { Title, Text } = Typography;
 
@@ -85,6 +98,7 @@ const BillingDetail: React.FC = () => {
   const { orderId: id } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
   const userData = useSelector((state: RootState) => state.auth.userData);
+  const { canRead: _canRead, canWrite: _canWrite } = usePermissions();
   const isVendor = userData?.userType === 'VENDOR';
   const isHospital = userData?.userType === 'HOSPITAL';
   const isAdmin = userData?.userType === 'ADMIN';
@@ -94,6 +108,15 @@ const BillingDetail: React.FC = () => {
   );
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+
+  useBreadcrumbOverride(
+    invoice
+      ? [
+          { title: 'Invoices', to: '/billing-orders' },
+          { title: (invoice as any).number || (invoice as any).invoiceNumber || 'Invoice detail' },
+        ]
+      : null,
+  );
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -104,6 +127,34 @@ const BillingDetail: React.FC = () => {
   // Mark Paid modal
   const [markPaidOpen, setMarkPaidOpen] = useState(false);
   const [markPaidForm] = Form.useForm();
+
+  // 3-way match state (Feature 12 integration)
+  const [matches, setMatches] = useState<ThreeWayMatch[]>([]);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const invoiceId = (invoice as any)?.id ?? null;
+  const fetchMatches = useCallback(async () => {
+    if (!invoiceId) return;
+    try {
+      const r = await matchingApi.forInvoice(invoiceId);
+      setMatches(r.items ?? []);
+    } catch { /* noop */ }
+  }, [invoiceId]);
+  useEffect(() => { fetchMatches(); }, [fetchMatches]);
+
+  const runMatch = async () => {
+    if (!invoiceId) return;
+    setMatchLoading(true);
+    try {
+      const r = await matchingApi.run(invoiceId);
+      const breakdown = Object.entries(r.byStatus).map(([k, v]) => `${k}=${v}`).join(' · ');
+      message.success(`Matched ${r.total} lines. ${breakdown || ''}`);
+      await fetchMatches();
+    } catch (err: any) {
+      message.error(err?.response?.data?.error ?? 'Failed to run match');
+    } finally {
+      setMatchLoading(false);
+    }
+  };
 
   const fetchInvoice = useCallback(async () => {
     if (!id) return;
@@ -492,6 +543,115 @@ const BillingDetail: React.FC = () => {
               )}
             />
           </SectionCard>
+
+          {/* 3-Way Match (Feature 12) — visible only when user can read goods receipts */}
+          {_canRead('goods-receipts') && (
+          <SectionCard
+            title={
+              <Space>
+                <CheckCircleOutlined style={{ color: '#1BAEE5' }} />
+                3-Way Match
+                {matches.length > 0 && <Tag>{matches.length} lines</Tag>}
+              </Space>
+            }
+            extra={
+              _canWrite('goods-receipts') ? (
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<ReloadOutlined />}
+                  loading={matchLoading}
+                  onClick={runMatch}
+                  disabled={!invoiceId}
+                >
+                  {matches.length ? 'Re-run' : 'Run match'}
+                </Button>
+              ) : null
+            }
+          >
+            {matches.length === 0 ? (
+              <Text type="secondary">
+                Click "Run match" to compare this invoice against the source PO + goods receipts.
+                Tolerance: qty exact, price ±2%.
+              </Text>
+            ) : (
+              <>
+                <Space wrap style={{ marginBottom: 8 }}>
+                  {Object.entries(
+                    matches.reduce<Record<string, number>>((acc, m) => {
+                      acc[m.matchStatus] = (acc[m.matchStatus] ?? 0) + 1;
+                      return acc;
+                    }, {}),
+                  ).map(([s, n]) => (
+                    <Tag key={s} color={MATCH_COLOR[s] ?? 'default'}>
+                      {s}: {n}
+                    </Tag>
+                  ))}
+                </Space>
+                <Table
+                  size="small"
+                  rowKey="id"
+                  pagination={false}
+                  dataSource={matches}
+                  columns={[
+                    { title: 'HCPC', dataIndex: 'hcpcCode', width: 90 },
+                    {
+                      title: 'Status',
+                      dataIndex: 'matchStatus',
+                      width: 140,
+                      render: (s: string) => <Tag color={MATCH_COLOR[s] ?? 'default'}>{s}</Tag>,
+                    },
+                    {
+                      title: 'Invoice',
+                      children: [
+                        { title: 'Qty', dataIndex: 'invoiceQuantity', width: 60 },
+                        {
+                          title: 'Unit $',
+                          dataIndex: 'invoiceUnitPriceUsd',
+                          width: 80,
+                          render: (v: number | null) => (v == null ? '—' : `$${v.toFixed(2)}`),
+                        },
+                      ],
+                    },
+                    {
+                      title: 'Received',
+                      dataIndex: 'receivedQuantity',
+                      width: 90,
+                      render: (v: number | null) => v ?? '—',
+                    },
+                    {
+                      title: 'Qty var',
+                      dataIndex: 'qtyVariance',
+                      width: 80,
+                      render: (v: number | null) => v ?? '—',
+                    },
+                    {
+                      title: 'Price var %',
+                      dataIndex: 'priceVariancePct',
+                      width: 100,
+                      render: (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`),
+                    },
+                    {
+                      title: 'Resolution',
+                      dataIndex: 'resolution',
+                      width: 110,
+                      render: (r: string | null) =>
+                        r ? (
+                          <Tag color={r === 'ACCEPTED' ? 'green' : r === 'DISPUTED' ? 'red' : 'blue'}>{r}</Tag>
+                        ) : (
+                          <Text type="secondary">Pending</Text>
+                        ),
+                    },
+                  ]}
+                />
+                <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                  Resolve exceptions on the{' '}
+                  <a onClick={() => navigate('/match-exceptions')}>Match Exceptions</a> page.
+                </Text>
+              </>
+            )}
+          </SectionCard>
+          )}
 
           {/* Payment Details — only when INVOICE_PAID */}
           {invoice?.status === 'INVOICE_PAID' && invoice.payment && (

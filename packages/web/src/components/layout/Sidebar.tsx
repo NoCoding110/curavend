@@ -24,8 +24,15 @@ import {
   AuditOutlined,
   CheckCircleOutlined,
   ApiOutlined,
+  MedicineBoxOutlined,
+  ExperimentOutlined,
+  HistoryOutlined,
+  ThunderboltOutlined,
+  WarningOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import { useUserRoles } from '../../hooks/useUserRoles';
+import { usePermissions } from '../../hooks/usePermissions';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 
@@ -40,6 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const location = useLocation();
   const { isAdmin, isHospital, isVendor, isProvider, isSuperVendor, isLab } =
     useUserRoles();
+  const { canRead } = usePermissions();
   const unreadChatCount = useSelector(
     (state: RootState) => state.message.unreadChatCount,
   );
@@ -51,13 +59,16 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         { key: '/labs', icon: <DashboardOutlined />, label: 'Lab Dashboard' },
         { key: '/labs/orders', icon: <ShoppingCartOutlined />, label: 'Lab Orders' },
         { key: '/labs/groups', icon: <FileProtectOutlined />, label: 'Lab Groups' },
+        { key: '/labs/inventory', icon: <ExperimentOutlined />, label: 'Inventory' },
+        { key: '/labs/test-mappings', icon: <AppstoreOutlined />, label: 'Test Recipes' },
+        { key: '/labs/audit', icon: <AuditOutlined />, label: 'Audit Log' },
         { key: '/labs/kit-sites', icon: <InboxOutlined />, label: 'Kit Sites' },
         { key: '/profile', icon: <DashboardOutlined />, label: 'Profile' },
       ] as MenuItem[];
     }
     const items: MenuItem[] = [
       {
-        key: '/',
+        key: '/dashboard',
         icon: <DashboardOutlined />,
         label: 'Dashboard',
       },
@@ -68,12 +79,63 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       },
     ];
 
+    // DME order wizard — quick-create for hospital, provider, admin
+    if (isHospital || isProvider || isAdmin) {
+      items.push({
+        key: '/create-dme-order',
+        icon: <MedicineBoxOutlined />,
+        label: 'New DME Order',
+      });
+    }
+
     // Approvals queue — every role with decision authority sees this
     if (isAdmin || isHospital || isVendor || isProvider || isSuperVendor) {
       items.push({
         key: '/approvals',
         icon: <CheckCircleOutlined />,
         label: 'Approvals',
+      });
+    }
+
+    // Prior Authorizations — hospitals + admins primarily
+    if (isAdmin || isHospital || isProvider) {
+      items.push({
+        key: '/prior-auths',
+        icon: <CheckCircleOutlined />,
+        label: 'Prior Auths',
+      });
+    }
+
+    // Procurement (Session 11) — collapse into a single expandable group.
+    // Role check filters who CAN access the resource;
+    // permission check filters whether THIS user has been granted any level on it.
+    const procurementChildren: MenuItem[] = [];
+    if ((isHospital || isAdmin || isProvider) && canRead('requisitions')) {
+      procurementChildren.push(
+        { key: '/requisitions', icon: <FileProtectOutlined />, label: 'Requisitions' },
+        { key: '/requisition-templates', icon: <AppstoreOutlined />, label: 'Templates' },
+      );
+    }
+    if ((isHospital || isVendor || isAdmin) && canRead('goods-receipts')) {
+      procurementChildren.push({
+        key: '/goods-receipts',
+        icon: <InboxOutlined />,
+        label: 'Goods Receipts',
+      });
+    }
+    if ((isHospital || isAdmin) && canRead('goods-receipts')) {
+      procurementChildren.push({
+        key: '/match-exceptions',
+        icon: <CheckCircleOutlined />,
+        label: 'Match Exceptions',
+      });
+    }
+    if (procurementChildren.length > 0) {
+      items.push({
+        key: 'procurement',
+        icon: <FileProtectOutlined />,
+        label: 'Procurement',
+        children: procurementChildren,
       });
     }
 
@@ -261,6 +323,16 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       { key: '/reporting/spend-by-department', label: 'Spend by Department' },
       { key: '/reporting/vendor-kpis', label: 'Vendor KPIs' },
       { key: '/reporting/vendor-scorecard', label: 'Vendor Scorecard' },
+      { key: '/reporting/forecast', label: 'Demand Forecast' },
+      { key: '/reporting/multi-site-spend', label: 'Multi-Site Spend' },
+      { key: '/reporting/contract-leakage', label: 'Contract Leakage' },
+      { key: '/reporting/department-spend', label: 'Department Spend (Budget)' },
+      { key: '/reporting/cross-site-inventory', label: 'Cross-site Inventory' },
+      { key: '/reporting/vendor-scorecards', label: 'Vendor Scorecards' },
+      { key: '/reporting/hospital-forecast', label: 'Hospital Forecast' },
+      { key: '/reporting/charge-capture-leakage', label: 'Charge Capture Leakage' },
+      { key: '/reporting/price-variance', label: 'Price Variance' },
+      { key: '/reporting/clinical-consumption', label: 'Clinical Consumption' },
     ];
     if (isAdmin) {
       reportingChildren.push(
@@ -326,6 +398,95 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
               label: 'Workflows',
             },
             {
+              key: '/admin/gpo-contracts',
+              icon: <AuditOutlined />,
+              label: 'GPO Contracts',
+            },
+            {
+              key: '/admin/payors',
+              icon: <AuditOutlined />,
+              label: 'Payors',
+            },
+            {
+              key: '/admin/ehr-connections',
+              icon: <AuditOutlined />,
+              label: 'EHR Connections',
+            },
+            ...(canRead('formulary')
+              ? [
+                  {
+                    key: '/admin/formulary',
+                    icon: <AppstoreOutlined />,
+                    label: 'Item Master',
+                  },
+                ]
+              : []),
+            {
+              key: '/admin/dmepos-compliance',
+              icon: <SafetyCertificateOutlined />,
+              label: 'DMEPOS Compliance',
+            },
+            {
+              key: '/admin/lcd-ingest',
+              icon: <AuditOutlined />,
+              label: 'LCD / NCD Ingest',
+            },
+            {
+              key: '/admin/lab-backfill',
+              icon: <HistoryOutlined />,
+              label: 'Lab Backfill',
+            },
+            {
+              key: '/admin/budgets',
+              icon: <DollarOutlined />,
+              label: 'Budgets',
+            },
+            {
+              key: '/admin/gl-ledger',
+              icon: <BankOutlined />,
+              label: 'GL Ledger',
+            },
+            {
+              key: '/admin/supplier-onboarding',
+              icon: <UserSwitchOutlined />,
+              label: 'Supplier Onboarding',
+            },
+            {
+              key: '/admin/compliance-dashboard',
+              icon: <SafetyCertificateOutlined />,
+              label: 'Compliance',
+            },
+            {
+              key: '/admin/item-master-hygiene',
+              icon: <AppstoreOutlined />,
+              label: 'Item Master Hygiene',
+            },
+            {
+              key: '/admin/invoice-match-rules',
+              icon: <CheckCircleOutlined />,
+              label: 'Match Rules',
+            },
+            {
+              key: '/admin/emergency-review',
+              icon: <ThunderboltOutlined />,
+              label: 'Emergency Review',
+            },
+            {
+              key: '/admin/recalls',
+              icon: <WarningOutlined />,
+              label: 'Recalls',
+            },
+            {
+              key: '/admin/controlled-substance',
+              icon: <LockOutlined />,
+              label: 'Controlled Subst.',
+            },
+            {
+              key: '/admin/approval-rules',
+              icon: <CheckCircleOutlined />,
+              label: 'Approval Rules',
+            },
+            {
               key: '/subscription',
               icon: <CreditCardOutlined />,
               label: 'Subscription Plans',
@@ -354,11 +515,18 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       });
     }
 
-    // Help & Support
+    // Help Center (training docs) — everyone sees this
+    items.push({
+      key: '/help-center',
+      icon: <QuestionCircleOutlined />,
+      label: 'Help Center',
+    });
+
+    // Help & Support (contact)
     items.push({
       key: '/help-and-support',
       icon: <CustomerServiceOutlined />,
-      label: 'Help & Support',
+      label: 'Contact Support',
     });
 
     // FAQ
@@ -369,10 +537,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     });
 
     return items;
-  }, [isAdmin, isHospital, isVendor, isProvider, isSuperVendor, isLab, unreadChatCount]);
+  }, [isAdmin, isHospital, isVendor, isProvider, isSuperVendor, isLab, unreadChatCount, canRead]);
 
   const onClick: MenuProps['onClick'] = ({ key }) => {
-    if (key === 'management-group') return;
+    if (key === 'management-group' || key === 'procurement') return;
     navigate(key);
   };
 
@@ -386,7 +554,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       for (const item of items) {
         if (!item || !('key' in item)) continue;
         const key = item.key as string;
-        if (key && key !== '/' && key !== 'management-group') allKeys.push(key);
+        if (key && key !== '/' && key !== 'management-group' && key !== 'procurement') allKeys.push(key);
         if ('children' in item && Array.isArray((item as any).children)) {
           collect((item as any).children);
         }

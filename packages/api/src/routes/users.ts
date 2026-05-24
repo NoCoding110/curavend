@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { eq, and, like, sql, desc, asc } from 'drizzle-orm';
-import { users } from '@curavend/db';
+import { eq, and, like, sql, desc, asc, inArray } from 'drizzle-orm';
+import { users, userGroups, userGroupMembers, userMemberships } from '@curavend/db';
 import type { Env } from '../lib/env';
 import type { AuthUser } from '../middleware/auth';
 import { getDb } from '../lib/db';
@@ -51,6 +51,8 @@ const createUserSchema = z.object({
   npiNumber: z.string().optional(),
   specialty: z.string().optional(),
   licenseNumber: z.string().optional(),
+  // Optional: add the new user to one or more existing groups at creation time.
+  groupIds: z.array(z.string()).optional(),
 });
 
 const updateUserSchema = z.object({
@@ -79,6 +81,9 @@ const updateUserSchema = z.object({
   npiNumber: z.string().optional(),
   specialty: z.string().optional(),
   licenseNumber: z.string().optional(),
+  // When present, replaces the user's group memberships with this exact set
+  // (additions + removals). Omit to leave memberships untouched.
+  groupIds: z.array(z.string()).optional(),
 });
 
 const updateStatusSchema = z.object({
@@ -390,6 +395,28 @@ userRoutes.post(
       tempPassword,
     });
 
+    // If groupIds were passed, add the new user to each group (after
+    // verifying the caller is allowed to manage each one — same-tenant).
+    if (data.groupIds && data.groupIds.length > 0) {
+      const allowedGroups = await db.select().from(userGroups).where(inArray(userGroups.id, data.groupIds));
+      const isPlatformAdmin = ['ACCOUNT_MANAGER', 'ACCOUNT_MANAGER_USER'].includes(authUser.role);
+      for (const g of allowedGroups) {
+        if (!isPlatformAdmin) {
+          const sameHospital = authUser.hospitalId && g.tenantType === 'HOSPITAL' && g.tenantId === authUser.hospitalId;
+          const sameVendor = authUser.vendorId && g.tenantType === 'VENDOR' && g.tenantId === authUser.vendorId;
+          const sameProvider = authUser.providerId && g.tenantType === 'PROVIDER' && g.tenantId === authUser.providerId;
+          if (!sameHospital && !sameVendor && !sameProvider) continue;
+        }
+        await db.insert(userGroupMembers).values({
+          id: crypto.randomUUID(),
+          userGroupId: g.id,
+          userId,
+          addedBy: authUser.id,
+          addedAt: now,
+        });
+      }
+    }
+
     // Fetch the created user (without sensitive fields)
     const createdRow = await db.select().from(users).where(eq(users.id, userId)).limit(1).then(r => r[0] ?? null);
     const { passwordHash: _ph2, mfaSecret: _ms2, ...createdUser } = createdRow ?? {} as any;
@@ -442,6 +469,58 @@ userRoutes.put('/:id', async (c) => {
       updatedAt: new Date().toISOString(),
     })
     .where(eq(users.id, id));
+
+  // Replace group memberships if `groupIds` was provided. Missing key = leave untouched.
+  if (data.groupIds !== undefined) {
+    const desired = new Set(data.groupIds);
+    // Filter to groups the caller is allowed to manage (same-tenant) — admins bypass.
+    const isPlatformAdmin = ['ACCOUNT_MANAGER', 'ACCOUNT_MANAGER_USER'].includes(authUser.role);
+    const allowedGroups = data.groupIds.length > 0
+      ? await db.select().from(userGroups).where(inArray(userGroups.id, [...desired]))
+      : [];
+    const safeDesired = new Set<string>();
+    for (const g of allowedGroups) {
+      if (isPlatformAdmin) { safeDesired.add(g.id); continue; }
+      const sameHospital = authUser.hospitalId && g.tenantType === 'HOSPITAL' && g.tenantId === authUser.hospitalId;
+      const sameVendor = authUser.vendorId && g.tenantType === 'VENDOR' && g.tenantId === authUser.vendorId;
+      const sameProvider = authUser.providerId && g.tenantType === 'PROVIDER' && g.tenantId === authUser.providerId;
+      if (sameHospital || sameVendor || sameProvider) safeDesired.add(g.id);
+    }
+
+    const current = await db
+      .select({ id: userGroupMembers.id, userGroupId: userGroupMembers.userGroupId })
+      .from(userGroupMembers)
+      .where(eq(userGroupMembers.userId, id));
+    const currentByGroup = new Map(current.map((r) => [r.userGroupId, r.id]));
+    const now = new Date().toISOString();
+
+    // Add missing
+    for (const groupId of safeDesired) {
+      if (!currentByGroup.has(groupId)) {
+        await db.insert(userGroupMembers).values({
+          id: crypto.randomUUID(),
+          userGroupId: groupId,
+          userId: id,
+          addedBy: authUser.id,
+          addedAt: now,
+        });
+      }
+    }
+    // Remove no-longer-desired (only within the caller's tenant — keep cross-tenant memberships intact for non-admins)
+    for (const [groupId, memberRowId] of currentByGroup) {
+      if (safeDesired.has(groupId)) continue;
+      // Non-admin: only remove if the group is in caller's tenant
+      if (!isPlatformAdmin) {
+        const [g] = await db.select().from(userGroups).where(eq(userGroups.id, groupId)).limit(1);
+        if (!g) continue;
+        const sameH = authUser.hospitalId && g.tenantType === 'HOSPITAL' && g.tenantId === authUser.hospitalId;
+        const sameV = authUser.vendorId && g.tenantType === 'VENDOR' && g.tenantId === authUser.vendorId;
+        const sameP = authUser.providerId && g.tenantType === 'PROVIDER' && g.tenantId === authUser.providerId;
+        if (!sameH && !sameV && !sameP) continue;
+      }
+      await db.delete(userGroupMembers).where(eq(userGroupMembers.id, memberRowId));
+    }
+  }
 
   const updatedRow = await db.select().from(users).where(eq(users.id, id)).limit(1).then(r => r[0] ?? null);
   const { passwordHash: _ph3, mfaSecret: _ms3, ...updatedUser } = updatedRow ?? {} as any;
@@ -562,5 +641,107 @@ userRoutes.delete(
     return c.json({ success: true });
   },
 );
+
+// ─── POST /users/:id/memberships ────────────────────────────────────────────
+// Admin-only: attach an existing user to an additional tenant (Phase F
+// multi-membership). Adds a row to `user_memberships`. Does NOT change the
+// legacy `users.hospitalId/vendorId` columns — those reflect the *active*
+// membership and rotate via `/auth/switch-membership`.
+userRoutes.post(
+  '/:id/memberships',
+  rbac('ACCOUNT_MANAGER', 'ACCOUNT_MANAGER_USER'),
+  async (c) => {
+    const db = getDb(c.env.DB);
+    const id = c.req.param('id');
+    const body = (await c.req.json()) as {
+      tenantType?: 'HOSPITAL' | 'VENDOR' | 'PROVIDER' | 'SUPER_VENDOR';
+      tenantId?: string;
+      role?: string;
+      isDefault?: boolean;
+    };
+    if (!body.tenantType || !body.tenantId || !body.role) {
+      throw new ValidationError('tenantType, tenantId, role are required');
+    }
+    const target = await db.select().from(users).where(eq(users.id, id)).limit(1).then(r => r[0] ?? null);
+    if (!target) throw new NotFoundError('User not found');
+
+    // Conflict check via unique index
+    const dupe = await db
+      .select()
+      .from(userMemberships)
+      .where(
+        and(
+          eq(userMemberships.userId, id),
+          eq(userMemberships.tenantType, body.tenantType),
+          eq(userMemberships.tenantId, body.tenantId),
+        ),
+      )
+      .limit(1);
+    if (dupe.length) throw new ConflictError('User already has this membership');
+
+    const now = new Date().toISOString();
+    const newId = crypto.randomUUID();
+    await db.insert(userMemberships).values({
+      id: newId,
+      userId: id,
+      tenantType: body.tenantType,
+      tenantId: body.tenantId,
+      role: body.role,
+      isActive: 1,
+      isDefault: body.isDefault ? 1 : 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return c.json({ id: newId, userId: id, tenantType: body.tenantType, tenantId: body.tenantId, role: body.role }, 201);
+  },
+);
+
+// ─── DELETE /users/:id/memberships/:membershipId ────────────────────────────
+// Soft-delete: marks `isActive=0`. Membership rows are retained for audit.
+userRoutes.delete(
+  '/:id/memberships/:membershipId',
+  rbac('ACCOUNT_MANAGER', 'ACCOUNT_MANAGER_USER'),
+  async (c) => {
+    const db = getDb(c.env.DB);
+    const { id, membershipId } = c.req.param();
+    const [row] = await db
+      .select()
+      .from(userMemberships)
+      .where(and(eq(userMemberships.id, membershipId), eq(userMemberships.userId, id)))
+      .limit(1);
+    if (!row) throw new NotFoundError('Membership not found');
+    await db
+      .update(userMemberships)
+      .set({ isActive: 0, updatedAt: new Date().toISOString() })
+      .where(eq(userMemberships.id, membershipId));
+    return c.json({ id: membershipId, deactivated: true });
+  },
+);
+
+// ─── GET /users/:id/groups ─────────────────────────────────────────────────
+// Return all groups a user belongs to (tenant-scoped). Used by the user
+// edit drawer to pre-fill the Groups multi-select.
+userRoutes.get('/:id/groups', async (c) => {
+  const db = getDb(c.env.DB);
+  const authUser = c.get('user');
+  const id = c.req.param('id');
+  const target = await db.select().from(users).where(eq(users.id, id)).limit(1).then(r => r[0] ?? null);
+  if (!target) throw new NotFoundError('User not found');
+  if (!canManageUser(authUser, target) && authUser.id !== id) {
+    throw new ForbiddenError('Cannot view groups for this user');
+  }
+  const rows = await db
+    .select({
+      id: userGroups.id,
+      name: userGroups.name,
+      tenantType: userGroups.tenantType,
+      tenantId: userGroups.tenantId,
+      groupKind: userGroups.groupKind,
+    })
+    .from(userGroupMembers)
+    .leftJoin(userGroups, eq(userGroups.id, userGroupMembers.userGroupId))
+    .where(eq(userGroupMembers.userId, id));
+  return c.json({ items: rows.filter((r) => r.id != null) });
+});
 
 export default userRoutes;

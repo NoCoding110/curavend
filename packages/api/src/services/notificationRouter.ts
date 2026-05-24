@@ -18,6 +18,7 @@ import {
   hospitals,
   vendors,
   users,
+  userGroupMembers,
   type NotificationEventType,
   type NotificationChannel,
   type NotificationRecipientType,
@@ -109,7 +110,12 @@ export async function resolveRecipients(
     ? { type: 'VENDOR' as const, id: args.vendorId }
     : null;
 
-  let routes: Array<{ channel: NotificationChannel; recipientType: NotificationRecipientType; customEmail?: string | null }> = [];
+  let routes: Array<{
+    channel: NotificationChannel;
+    recipientType: NotificationRecipientType;
+    customEmail?: string | null;
+    recipientGroupId?: string | null;
+  }> = [];
 
   if (scope) {
     const prefs = await db
@@ -128,6 +134,7 @@ export async function resolveRecipients(
         channel: p.channel as NotificationChannel,
         recipientType: p.recipientType as NotificationRecipientType,
         customEmail: p.customEmail,
+        recipientGroupId: p.recipientGroupId,
       }));
     }
   }
@@ -168,10 +175,10 @@ export async function resolveRecipients(
         }
         break;
       }
-      case 'CLINICAL': {
+      case 'CLINICIAN': {
         const clinical = contactByRole.get('CLINICAL');
         if (clinical?.email) {
-          out.push({ channel: route.channel, recipientType: 'CLINICAL', address: clinical.email });
+          out.push({ channel: route.channel, recipientType: 'CLINICIAN', address: clinical.email });
         }
         break;
       }
@@ -212,6 +219,34 @@ export async function resolveRecipients(
             if (u.email) {
               out.push({ channel: route.channel, recipientType: 'PROCUREMENT_TEAM', address: u.email, userId: u.id });
             }
+          }
+        }
+        break;
+      }
+      case 'GROUP': {
+        // Fan out to every member of the configured user_groups row.
+        // The route MUST carry a recipientGroupId; otherwise this is a misconfiguration.
+        if (!route.recipientGroupId) break;
+        const memberRows = await db
+          .select({ userId: userGroupMembers.userId })
+          .from(userGroupMembers)
+          .where(eq(userGroupMembers.userGroupId, route.recipientGroupId));
+        if (memberRows.length === 0) break;
+        const memberUsers = await db
+          .select({ id: users.id, email: users.email })
+          .from(users)
+          .where(
+            and(
+              inArray(
+                users.id,
+                memberRows.map((m) => m.userId),
+              ),
+              eq(users.userStatus, 'ACTIVE'),
+            ),
+          );
+        for (const u of memberUsers) {
+          if (u.email) {
+            out.push({ channel: route.channel, recipientType: 'GROUP', address: u.email, userId: u.id });
           }
         }
         break;

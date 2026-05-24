@@ -5,14 +5,17 @@ import type { AuthUser } from './auth';
 import { getDb } from '../lib/db';
 import {
   userPermissions,
+  PERMISSION_RESOURCES,
   PERMISSION_LEVEL_RANK,
   type PermissionResource,
   type PermissionLevel,
 } from '@curavend/db';
+import { resolveGroupPermissions } from '../services/groupResolver';
 
 /**
  * Returns the default access level for a role/resource combination
- * when the user has no explicit user_permissions row.
+ * when the user has no explicit user_permissions row and is not in any
+ * group that grants this resource.
  *
  * Hospital managers and account managers never hit this helper — the
  * middleware short-circuits them to FULL before lookup.
@@ -44,8 +47,19 @@ export function roleDefaultFor(role: string, resource: PermissionResource): Perm
   }
 }
 
+/** Pick the higher of two permission levels. */
+function maxLevel(a: PermissionLevel, b: PermissionLevel): PermissionLevel {
+  return PERMISSION_LEVEL_RANK[a] >= PERMISSION_LEVEL_RANK[b] ? a : b;
+}
+
 /**
  * Fine-grained permission guard. Must run AFTER authMiddleware.
+ *
+ * Effective level per resource = max(
+ *   user_permissions[resource]  (explicit user override),
+ *   user_group_permissions[*]   (any group the user is in, max wins),
+ *   roleDefaultFor(role, resource)
+ * )
  *
  * Usage:
  *   app.get('/', requirePermission('orders', 'READ'), handler)
@@ -73,14 +87,24 @@ export const requirePermission = (
     }
 
     const db = getDb(c.env.DB);
-    const row = await db
-      .select()
-      .from(userPermissions)
-      .where(and(eq(userPermissions.userId, user.id), eq(userPermissions.resource, resource)))
-      .limit(1);
 
-    const effective: PermissionLevel =
-      (row[0]?.level as PermissionLevel | undefined) ?? roleDefaultFor(user.role, resource);
+    // Three sources merge to the effective level for THIS resource.
+    const [override, groupGrants] = await Promise.all([
+      db
+        .select()
+        .from(userPermissions)
+        .where(and(eq(userPermissions.userId, user.id), eq(userPermissions.resource, resource)))
+        .limit(1),
+      resolveGroupPermissions(db, user.id),
+    ]);
+
+    const explicit = (override[0]?.level as PermissionLevel | undefined) ?? null;
+    const fromGroup = groupGrants[resource] ?? null;
+    const fromRole = roleDefaultFor(user.role, resource);
+
+    let effective: PermissionLevel = fromRole;
+    if (explicit) effective = maxLevel(effective, explicit);
+    if (fromGroup) effective = maxLevel(effective, fromGroup);
 
     if (PERMISSION_LEVEL_RANK[effective] < PERMISSION_LEVEL_RANK[min]) {
       return c.json(
@@ -97,20 +121,16 @@ export const requirePermission = (
 };
 
 /**
- * Compute effective permissions for a user (all resources).
- * Used by GET /api/user-permissions/me to populate frontend hook.
+ * Compute effective permissions for a user across ALL 8 resources.
+ *
+ * Used by GET /api/user-permissions/me to populate the frontend hook.
+ * Returns a complete map (no missing keys) so the UI can render directly.
  */
 export async function computeEffectivePermissions(
   db: ReturnType<typeof getDb>,
   user: AuthUser,
 ): Promise<Record<PermissionResource, PermissionLevel>> {
-  const resources: PermissionResource[] = [
-    'facilities',
-    'departments',
-    'physicians',
-    'orders',
-    'vendors',
-  ];
+  const resources = PERMISSION_RESOURCES; // all 8
 
   // Fast-path full access
   if (
@@ -125,16 +145,24 @@ export async function computeEffectivePermissions(
     >;
   }
 
-  const rows = await db
-    .select()
-    .from(userPermissions)
-    .where(eq(userPermissions.userId, user.id));
+  const [overrideRows, groupGrants] = await Promise.all([
+    db.select().from(userPermissions).where(eq(userPermissions.userId, user.id)),
+    resolveGroupPermissions(db, user.id),
+  ]);
 
   const overrides = new Map<string, PermissionLevel>(
-    rows.map((r) => [r.resource, r.level as PermissionLevel]),
+    overrideRows.map((r) => [r.resource, r.level as PermissionLevel]),
   );
 
   return Object.fromEntries(
-    resources.map((r) => [r, overrides.get(r) ?? roleDefaultFor(user.role, r)]),
+    resources.map((r) => {
+      const fromRole = roleDefaultFor(user.role, r);
+      const fromOverride = overrides.get(r);
+      const fromGroup = groupGrants[r];
+      let level: PermissionLevel = fromRole;
+      if (fromOverride) level = maxLevel(level, fromOverride);
+      if (fromGroup) level = maxLevel(level, fromGroup);
+      return [r, level];
+    }),
   ) as Record<PermissionResource, PermissionLevel>;
 }

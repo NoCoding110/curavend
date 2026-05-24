@@ -28,4 +28,20 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // Split heavy 3D libs into their own chunk so the landing chunk only
+    // pulls them in when the user actually scrolls to the 3D scene. The
+    // landing-page lazy import + this chunk boundary together keep the
+    // initial SPA load lean.
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/three/')) return 'three';
+          if (id.includes('@react-three/')) return 'three';
+          return undefined;
+        },
+      },
+    },
+    chunkSizeWarningLimit: 700,
+  },
 });

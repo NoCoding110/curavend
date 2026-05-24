@@ -148,8 +148,17 @@ const Reports: React.FC = () => {
       (async () => {
         setLoadingVendor(true);
         try {
-          const data = await get<{ items: SpendByVendor[] }>('/reports/spend-by-vendor', params);
-          setSpendByVendor(data.items || []);
+          const data = await get<{ items: Array<{ vendor?: string; vendorName?: string; totalSpend?: number; orders?: number; invoiceCount?: number }> }>(
+            '/reports/spend-by-vendor',
+            params,
+          );
+          // Normalize backend field names (vendorName/invoiceCount) into the shape this page uses (vendor/orders).
+          const normalized: SpendByVendor[] = (data.items || []).map((v) => ({
+            vendor: v.vendor ?? v.vendorName ?? '—',
+            totalSpend: Number(v.totalSpend ?? 0),
+            orders: Number(v.orders ?? v.invoiceCount ?? 0),
+          }));
+          setSpendByVendor(normalized);
         } catch {
           message.error('Failed to load vendor spend data.');
         } finally {
@@ -484,6 +493,34 @@ const Reports: React.FC = () => {
         const pct = r.total_orders > 0 ? Math.round(((r.completed ?? 0) / r.total_orders) * 100) : 0;
         return <Tag color={pct >= 90 ? 'green' : pct >= 70 ? 'orange' : 'red'}>{pct}%</Tag>;
       },
+    },
+    { title: 'On-Time %', dataIndex: 'on_time_pct', key: 'on_time_pct', align: 'center' as const,
+      render: (v: number | null) => {
+        if (v == null) return <Text type="secondary">—</Text>;
+        return <Tag color={v >= 90 ? 'green' : v >= 70 ? 'orange' : 'red'}>{v}%</Tag>;
+      },
+    },
+    { title: 'Avg Response', dataIndex: 'avg_response_hours', key: 'avg_response_hours', align: 'center' as const,
+      render: (v: number | null) => {
+        if (v == null) return <Text type="secondary">—</Text>;
+        const label = v < 1 ? `${Math.round(v * 60)} min` : `${v.toFixed(1)}h`;
+        return <Tag color={v <= 4 ? 'green' : v <= 24 ? 'orange' : 'red'}>{label}</Tag>;
+      },
+    },
+    { title: 'QC Pass %', dataIndex: 'qc_pass_pct', key: 'qc_pass_pct', align: 'center' as const,
+      render: (v: number | null) => {
+        if (v == null) return <Text type="secondary">—</Text>;
+        return <Tag color={v >= 95 ? 'green' : v >= 80 ? 'orange' : 'red'}>{v}%</Tag>;
+      },
+    },
+    { title: 'Contract Compliance', dataIndex: 'contract_compliance_pct', key: 'contract_compliance_pct', align: 'center' as const,
+      render: (v: number | null) => {
+        if (v == null) return <Text type="secondary">—</Text>;
+        return <Tag color={v >= 90 ? 'green' : v >= 60 ? 'orange' : 'red'}>{v}%</Tag>;
+      },
+    },
+    { title: 'SLA Breaches', dataIndex: 'sla_breach_count', key: 'sla_breach_count', align: 'center' as const,
+      render: (v: number) => <Tag color={v === 0 ? 'green' : v < 3 ? 'orange' : 'red'}>{v ?? 0}</Tag>,
     },
   ];
 

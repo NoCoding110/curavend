@@ -89,7 +89,11 @@ const IntegrationLog: React.FC = () => {
   if (!isAdmin) {
     return (
       <PageWrap>
-        <Alert message="Admin only" description="Only admins can view the integration log." type="warning" />
+        <Card style={{ marginBottom: 16 }}>
+          <Title level={3} style={{ margin: 0 }}>Integration Log</Title>
+          <Text type="secondary">Outbound third-party HTTP calls — retry / abort dead-letters</Text>
+        </Card>
+        <Alert message="Admin only" description="Only admins can view the integration log." type="warning" showIcon />
       </PageWrap>
     );
   }

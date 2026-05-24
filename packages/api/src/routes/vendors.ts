@@ -170,16 +170,17 @@ app.post('/onboard', async (c) => {
   const vendorId = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  // Create vendor
+  // Create vendor. NOTE: `npi` and `phone` aren't in the vendors schema —
+  // those would need a migration before they can be persisted. `address` maps
+  // to `streetAddress`.
   await db.insert(vendors).values({
     id: vendorId,
     name: body.name,
-    npi: body.npi ?? null,
-    address: body.address ?? null,
+    ein: body.ein ?? null,
+    streetAddress: body.address ?? body.streetAddress ?? null,
     city: body.city ?? null,
     state: body.state ?? null,
     zip: body.zip ?? null,
-    phone: body.phone ?? null,
     billingEmail: body.billingEmail ?? null,
     modifiedOrders: 0,
     inProcessOrders: 0,

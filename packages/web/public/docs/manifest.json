@@ -1,0 +1,417 @@
+{
+  "generatedAt": "2026-05-24T14:22:16.060Z",
+  "index": {
+    "path": "/docs/README.md"
+  },
+  "personas": [
+    {
+      "slug": "admin",
+      "title": "Admin Quick-Start",
+      "path": "/docs/personas/admin.md"
+    },
+    {
+      "slug": "hospital",
+      "title": "Hospital Quick-Start",
+      "path": "/docs/personas/hospital.md"
+    },
+    {
+      "slug": "lab",
+      "title": "Lab Quick-Start",
+      "path": "/docs/personas/lab.md"
+    },
+    {
+      "slug": "provider",
+      "title": "Provider Quick-Start",
+      "path": "/docs/personas/provider.md"
+    },
+    {
+      "slug": "super-vendor",
+      "title": "Super-Vendor Quick-Start",
+      "path": "/docs/personas/super-vendor.md"
+    },
+    {
+      "slug": "vendor",
+      "title": "Vendor Quick-Start",
+      "path": "/docs/personas/vendor.md"
+    }
+  ],
+  "features": [
+    {
+      "slug": "01-dashboard",
+      "title": "Dashboard",
+      "path": "/docs/features/01-dashboard.md"
+    },
+    {
+      "slug": "02-orders",
+      "title": "Orders",
+      "path": "/docs/features/02-orders.md"
+    },
+    {
+      "slug": "03-requisitions",
+      "title": "Requisitions",
+      "path": "/docs/features/03-requisitions.md"
+    },
+    {
+      "slug": "04-formulary",
+      "title": "Formulary / Item Master",
+      "path": "/docs/features/04-formulary.md"
+    },
+    {
+      "slug": "05-approvals",
+      "title": "Approvals",
+      "path": "/docs/features/05-approvals.md"
+    },
+    {
+      "slug": "06-prior-auths",
+      "title": "Prior Authorizations",
+      "path": "/docs/features/06-prior-auths.md"
+    },
+    {
+      "slug": "07-goods-receipts",
+      "title": "Goods Receipts",
+      "path": "/docs/features/07-goods-receipts.md"
+    },
+    {
+      "slug": "08-three-way-match",
+      "title": "3-Way Matching",
+      "path": "/docs/features/08-three-way-match.md"
+    },
+    {
+      "slug": "09-invoices",
+      "title": "Invoices",
+      "path": "/docs/features/09-invoices.md"
+    },
+    {
+      "slug": "10-contracts-pricing",
+      "title": "Contracts & Pricing",
+      "path": "/docs/features/10-contracts-pricing.md"
+    },
+    {
+      "slug": "11-gpo-contracts",
+      "title": "GPO Contracts",
+      "path": "/docs/features/11-gpo-contracts.md"
+    },
+    {
+      "slug": "12-payors-eligibility",
+      "title": "Payors & Eligibility",
+      "path": "/docs/features/12-payors-eligibility.md"
+    },
+    {
+      "slug": "13-forecasting",
+      "title": "Demand Forecasting",
+      "path": "/docs/features/13-forecasting.md"
+    },
+    {
+      "slug": "14-multi-site-spend",
+      "title": "Multi-Site Spend",
+      "path": "/docs/features/14-multi-site-spend.md"
+    },
+    {
+      "slug": "15-contract-leakage",
+      "title": "Contract Leakage",
+      "path": "/docs/features/15-contract-leakage.md"
+    },
+    {
+      "slug": "16-ehr-connections",
+      "title": "EHR Connections",
+      "path": "/docs/features/16-ehr-connections.md"
+    },
+    {
+      "slug": "17-vendor-scorecard",
+      "title": "Vendor Scorecard",
+      "path": "/docs/features/17-vendor-scorecard.md"
+    },
+    {
+      "slug": "18-user-management",
+      "title": "User Management",
+      "path": "/docs/features/18-user-management.md"
+    },
+    {
+      "slug": "19-permissions-groups",
+      "title": "Permissions & Groups",
+      "path": "/docs/features/19-permissions-groups.md"
+    },
+    {
+      "slug": "20-notifications",
+      "title": "Notifications",
+      "path": "/docs/features/20-notifications.md"
+    },
+    {
+      "slug": "21-dme-order-wizard",
+      "title": "DME Order Wizard",
+      "path": "/docs/features/21-dme-order-wizard.md"
+    },
+    {
+      "slug": "22-dme-document-packet",
+      "title": "DME Document Packet",
+      "path": "/docs/features/22-dme-document-packet.md"
+    },
+    {
+      "slug": "23-lcd-coverage-checker",
+      "title": "LCD Coverage Checker",
+      "path": "/docs/features/23-lcd-coverage-checker.md"
+    },
+    {
+      "slug": "24-cms-pa-required-list",
+      "title": "CMS PA-Required HCPC List",
+      "path": "/docs/features/24-cms-pa-required-list.md"
+    },
+    {
+      "slug": "25-dwo-claim-bundle",
+      "title": "DWO + Claim Bundle",
+      "path": "/docs/features/25-dwo-claim-bundle.md"
+    },
+    {
+      "slug": "26-dmepos-compliance",
+      "title": "DMEPOS Compliance Tracker",
+      "path": "/docs/features/26-dmepos-compliance.md"
+    },
+    {
+      "slug": "27-lab-inventory",
+      "title": "Lab Inventory",
+      "path": "/docs/features/27-lab-inventory.md"
+    },
+    {
+      "slug": "28-lab-forecasting",
+      "title": "Lab Forecasting + Auto-Replenishment",
+      "path": "/docs/features/28-lab-forecasting.md"
+    },
+    {
+      "slug": "29-backorders",
+      "title": "Order Backorders",
+      "path": "/docs/features/29-backorders.md"
+    },
+    {
+      "slug": "30-lab-auto-consumption",
+      "title": "Lab Auto-Consumption",
+      "path": "/docs/features/30-lab-auto-consumption.md"
+    },
+    {
+      "slug": "31-hospital-budgets",
+      "title": "Hospital Budgets",
+      "path": "/docs/features/31-hospital-budgets.md"
+    },
+    {
+      "slug": "32-po-transmission",
+      "title": "PO Transmission",
+      "path": "/docs/features/32-po-transmission.md"
+    },
+    {
+      "slug": "33-department-spend",
+      "title": "Department Spend",
+      "path": "/docs/features/33-department-spend.md"
+    },
+    {
+      "slug": "34-gl-ledger",
+      "title": "General Ledger",
+      "path": "/docs/features/34-gl-ledger.md"
+    },
+    {
+      "slug": "35-supplier-onboarding",
+      "title": "Supplier Onboarding",
+      "path": "/docs/features/35-supplier-onboarding.md"
+    },
+    {
+      "slug": "36-rma-workflow",
+      "title": "Returns (RMA Workflow)",
+      "path": "/docs/features/36-rma-workflow.md"
+    },
+    {
+      "slug": "37-invoice-match-rules",
+      "title": "Invoice Match Auto-Resolution Rules",
+      "path": "/docs/features/37-invoice-match-rules.md"
+    },
+    {
+      "slug": "38-item-master-hygiene",
+      "title": "Item Master Hygiene",
+      "path": "/docs/features/38-item-master-hygiene.md"
+    },
+    {
+      "slug": "39-point-of-use-capture",
+      "title": "Point-of-Use Capture",
+      "path": "/docs/features/39-point-of-use-capture.md"
+    },
+    {
+      "slug": "40-cross-site-inventory",
+      "title": "Cross-Site Inventory",
+      "path": "/docs/features/40-cross-site-inventory.md"
+    },
+    {
+      "slug": "41-compliance-dashboard",
+      "title": "Compliance Dashboard",
+      "path": "/docs/features/41-compliance-dashboard.md"
+    },
+    {
+      "slug": "42-backorder-triage",
+      "title": "Backorder Triage",
+      "path": "/docs/features/42-backorder-triage.md"
+    },
+    {
+      "slug": "43-logistics-cold-chain",
+      "title": "Logistics & Cold Chain",
+      "path": "/docs/features/43-logistics-cold-chain.md"
+    },
+    {
+      "slug": "44-emergency-purchasing",
+      "title": "Emergency Purchasing",
+      "path": "/docs/features/44-emergency-purchasing.md"
+    },
+    {
+      "slug": "45-inventory-transfers",
+      "title": "Cross-Facility Inventory Transfers",
+      "path": "/docs/features/45-inventory-transfers.md"
+    },
+    {
+      "slug": "46-recalls",
+      "title": "Recalls",
+      "path": "/docs/features/46-recalls.md"
+    },
+    {
+      "slug": "47-controlled-substance-log",
+      "title": "Controlled Substance Log",
+      "path": "/docs/features/47-controlled-substance-log.md"
+    },
+    {
+      "slug": "48-substitution-audit-log",
+      "title": "Substitution Audit Log",
+      "path": "/docs/features/48-substitution-audit-log.md"
+    },
+    {
+      "slug": "49-vendor-scorecard-snapshots",
+      "title": "Vendor Scorecard Snapshots",
+      "path": "/docs/features/49-vendor-scorecard-snapshots.md"
+    },
+    {
+      "slug": "50-hospital-demand-forecast",
+      "title": "Hospital Demand Forecast",
+      "path": "/docs/features/50-hospital-demand-forecast.md"
+    },
+    {
+      "slug": "51-charge-capture-leakage",
+      "title": "Charge Capture Leakage",
+      "path": "/docs/features/51-charge-capture-leakage.md"
+    },
+    {
+      "slug": "52-price-variance",
+      "title": "Price Variance",
+      "path": "/docs/features/52-price-variance.md"
+    }
+  ],
+  "workflows": [
+    {
+      "slug": "01-onboard-a-vendor",
+      "title": "Workflow 01 — Onboard a New Vendor",
+      "path": "/docs/workflows/01-onboard-a-vendor.md"
+    },
+    {
+      "slug": "02-create-and-submit-requisition",
+      "title": "Workflow 02 — Create and Submit a Requisition",
+      "path": "/docs/workflows/02-create-and-submit-requisition.md"
+    },
+    {
+      "slug": "03-approve-requisition-and-convert",
+      "title": "Workflow 03 — Approve a Requisition and Convert It to Orders",
+      "path": "/docs/workflows/03-approve-requisition-and-convert.md"
+    },
+    {
+      "slug": "04-record-goods-receipt",
+      "title": "Workflow 04 — Record a Goods Receipt for a Delivered Order",
+      "path": "/docs/workflows/04-record-goods-receipt.md"
+    },
+    {
+      "slug": "05-resolve-match-exception",
+      "title": "Workflow 05 — Resolve a 3-Way Match Exception",
+      "path": "/docs/workflows/05-resolve-match-exception.md"
+    },
+    {
+      "slug": "06-set-up-approval-rules",
+      "title": "Workflow 06 — Set Up Approval Routing Rules",
+      "path": "/docs/workflows/06-set-up-approval-rules.md"
+    },
+    {
+      "slug": "07-create-formulary-with-substitutes",
+      "title": "Workflow 07 — Build a Formulary with Substitutes",
+      "path": "/docs/workflows/07-create-formulary-with-substitutes.md"
+    },
+    {
+      "slug": "08-process-prior-authorization",
+      "title": "Workflow 08 — Process a Prior Authorization",
+      "path": "/docs/workflows/08-process-prior-authorization.md"
+    },
+    {
+      "slug": "09-run-multi-site-spend-report",
+      "title": "Workflow 09 — Run a Multi-Site Spend Report",
+      "path": "/docs/workflows/09-run-multi-site-spend-report.md"
+    },
+    {
+      "slug": "10-detect-contract-leakage",
+      "title": "Workflow 10 — Detect Contract Leakage",
+      "path": "/docs/workflows/10-detect-contract-leakage.md"
+    },
+    {
+      "slug": "11-onboard-a-lab",
+      "title": "Workflow 11 — Onboard a New Lab",
+      "path": "/docs/workflows/11-onboard-a-lab.md"
+    },
+    {
+      "slug": "12-onboard-a-hospital",
+      "title": "Workflow 12 — Onboard a New Hospital",
+      "path": "/docs/workflows/12-onboard-a-hospital.md"
+    },
+    {
+      "slug": "13-configure-ehr-feed",
+      "title": "Workflow 13 — Configure an EHR Feed",
+      "path": "/docs/workflows/13-configure-ehr-feed.md"
+    },
+    {
+      "slug": "14-grant-user-permissions",
+      "title": "Workflow 14 — Grant a User Fine-Grained Permissions",
+      "path": "/docs/workflows/14-grant-user-permissions.md"
+    },
+    {
+      "slug": "15-set-up-gpo-membership",
+      "title": "Workflow 15 — Set Up GPO Membership for a Hospital",
+      "path": "/docs/workflows/15-set-up-gpo-membership.md"
+    },
+    {
+      "slug": "16-create-dme-order-end-to-end",
+      "title": "Workflow 16 — Create a DME Order End-to-End",
+      "path": "/docs/workflows/16-create-dme-order-end-to-end.md"
+    },
+    {
+      "slug": "17-upload-dme-document-packet",
+      "title": "Workflow 17 — Upload the DME Document Packet",
+      "path": "/docs/workflows/17-upload-dme-document-packet.md"
+    },
+    {
+      "slug": "18-generate-dme-claim-bundle",
+      "title": "Workflow 18 — Generate a DME Claim Bundle",
+      "path": "/docs/workflows/18-generate-dme-claim-bundle.md"
+    },
+    {
+      "slug": "19-receive-lab-shipment",
+      "title": "Workflow 19 — Receive a Lab Shipment",
+      "path": "/docs/workflows/19-receive-lab-shipment.md"
+    },
+    {
+      "slug": "20-set-up-test-consumable-map",
+      "title": "Workflow 20 — Set Up a Test → Consumable Recipe",
+      "path": "/docs/workflows/20-set-up-test-consumable-map.md"
+    },
+    {
+      "slug": "21-audit-stock-movements",
+      "title": "Workflow 21 — Audit Lab Stock Movements for Compliance",
+      "path": "/docs/workflows/21-audit-stock-movements.md"
+    },
+    {
+      "slug": "22-handle-damaged-shipment",
+      "title": "Workflow 22 — Handle a Damaged Shipment End-to-End",
+      "path": "/docs/workflows/22-handle-damaged-shipment.md"
+    },
+    {
+      "slug": "23-handle-emergency-purchase",
+      "title": "Workflow 23 — Handle an Emergency Purchase",
+      "path": "/docs/workflows/23-handle-emergency-purchase.md"
+    }
+  ]
+}

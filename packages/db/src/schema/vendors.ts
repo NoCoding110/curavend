@@ -56,10 +56,20 @@ export const vendors = sqliteTable(
     unreadOrderCount: integer("unread_order_count").default(0),
     notificationSettings: text("notification_settings"), // JSON
 
+    // PO transmission preference (gap 4). Default EMAIL; admin can set to
+    // EDI / API / PUNCHOUT / PORTAL. `poTransmissionEndpoint` is the target
+    // (email addr, partner ID, API URL); credentials are JSON-encoded.
+    preferredPoTransmissionMethod: text("preferred_po_transmission_method").default("EMAIL"),
+    poTransmissionEndpoint: text("po_transmission_endpoint"),
+    poTransmissionCredentials: text("po_transmission_credentials"),
+
     // ── Shipping defaults (Phase D) ───────────────────────────
     defaultShipFromAddress: text("default_ship_from_address"), // JSON: {line1, line2, city, state, zip, country}
     defaultCarrierCode: text("default_carrier_code"),
     trackingUrlTemplate: text("tracking_url_template"), // {tracking} placeholder
+
+    // ── DMEPOS supplier compliance lives in `vendor_dmepos_compliance`
+    //    sidecar table (per-vendor 1:1) plus `vendor_compliance_docs` for files ──
 
     createdAt: text("created_at")
       .notNull()

@@ -45,9 +45,9 @@ export async function getNextValue(
   `);
 
   // Read back the current value
-  const result = await (db as any).get<{ current_value: number }>(sql`
+  const result = (await (db as any).get(sql`
     SELECT current_value FROM sequences WHERE name = ${sequenceName}
-  `);
+  `)) as { current_value: number } | undefined;
 
   if (!result?.current_value) {
     throw new Error(`Failed to retrieve sequence value for ${sequenceName}`);
@@ -63,9 +63,9 @@ export async function getCurrentValue(
   db: Database,
   sequenceName: string,
 ): Promise<number> {
-  const result = await (db as any).get<{ current_value: number }>(sql`
+  const result = (await (db as any).get(sql`
     SELECT current_value FROM sequences WHERE name = ${sequenceName}
-  `);
+  `)) as { current_value: number } | undefined;
 
   return result?.current_value ?? 0;
 }

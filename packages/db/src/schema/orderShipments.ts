@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
 import { relations, sql } from "drizzle-orm";
 import { orders } from "./orders";
 
@@ -40,6 +40,15 @@ export const orderShipments = sqliteTable(
     podSignedBy: text("pod_signed_by"),
     podSignedAt: text("pod_signed_at"),
 
+    // Cold-chain monitoring (Procurement v2 gap K).
+    coldChainRequired: integer("cold_chain_required").notNull().default(0),
+    coldChainSpecMinC: real("cold_chain_spec_min_c"),
+    coldChainSpecMaxC: real("cold_chain_spec_max_c"),
+    etaAt: text("eta_at"),
+    lastTempC: real("last_temp_c"),
+    lastTempAt: text("last_temp_at"),
+    hadExcursion: integer("had_excursion").notNull().default(0),
+
     createdByUserId: text("created_by_user_id"),
     createdAt: text("created_at")
       .notNull()
@@ -52,6 +61,7 @@ export const orderShipments = sqliteTable(
     index("order_shipments_order_idx").on(table.orderId),
     index("order_shipments_tracking_idx").on(table.trackingNumber),
     index("order_shipments_carrier_idx").on(table.carrierCode),
+    index("order_shipments_eta_idx").on(table.etaAt),
   ]
 );
 

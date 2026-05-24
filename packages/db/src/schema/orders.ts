@@ -24,6 +24,15 @@ export const orders = sqliteTable(
     declineReason: text("decline_reason"),
     modifyReason: text("modify_reason"),
     epicOrderStatus: text("epic_order_status"),
+    // ── Payor reference (Feature 3, May 2026) ──────────────────────────
+    payorId: text("payor_id"),
+    payorMemberId: text("payor_member_id"),
+    payorGroupId: text("payor_group_id"),
+    // ── Requisition source link (Feature 8, May 2026) ───────────────────
+    // When set, points to the requisitions row this order was spawned from.
+    requisitionId: text("requisition_id"),
+    // ── DME-specific intake lives in `dme_order_extensions` (sidecar
+    //    table; orders schema is at SQLite's ALTER-TABLE column limit) ──
     intent: text("intent"),
     priority: text("priority").default("routine"),
     requester: text("requester"),

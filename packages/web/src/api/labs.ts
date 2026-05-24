@@ -82,7 +82,24 @@ export const labsApi = {
     get<{ data: LabOrder[]; total: number; limit: number; offset: number }>('/labs/orders', params),
   getOrder: (id: string) =>
     get<{ data: LabOrder & { items: LabOrderItem[] } }>(`/labs/orders/${id}`),
-  createOrder: (body: any) => post<{ id: string; orderNumber: string; workflowInstanceId: string | null }>(
+  createOrder: (body: any) => post<{
+    id: string;
+    orderNumber: string;
+    workflowInstanceId: string | null;
+    consumption?: {
+      attempted: number;
+      fullyIssued: number;
+      shortages: Array<{
+        testCode: string;
+        consumableId: string;
+        consumableCode: string;
+        requested: number;
+        issued: number;
+        short: number;
+        isCritical: boolean;
+      }>;
+    };
+  }>(
     '/labs/orders',
     body,
   ),

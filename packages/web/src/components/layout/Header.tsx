@@ -22,6 +22,9 @@ import {
   UserOutlined,
   LogoutOutlined,
   ProfileOutlined,
+  SettingOutlined,
+  BellFilled,
+  QuestionCircleOutlined,
   CheckOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
@@ -242,6 +245,24 @@ const Header: React.FC<HeaderProps> = ({ collapsed, onToggle }) => {
       icon: <ProfileOutlined />,
       label: 'Profile',
       onClick: () => navigate('/profile'),
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Settings',
+      onClick: () => navigate('/setting'),
+    },
+    {
+      key: 'notification-preferences',
+      icon: <BellFilled />,
+      label: 'Notification Preferences',
+      onClick: () => navigate('/notification-preferences'),
+    },
+    {
+      key: 'help-center',
+      icon: <QuestionCircleOutlined />,
+      label: 'Help Center',
+      onClick: () => navigate('/help-center'),
     },
     { type: 'divider' },
     {

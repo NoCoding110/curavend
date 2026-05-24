@@ -14,6 +14,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useBreadcrumbOverride } from '../../../contexts/BreadcrumbContext';
 import {
   Card,
   Tabs,
@@ -100,6 +101,15 @@ const ContractDetailPage: React.FC = () => {
   const [revisions, setRevisions] = useState<ContractRevision[]>([]);
   const [history, setHistory] = useState<ContractHistoryRow[]>([]);
   const [activeTab, setActiveTab] = useState('overview');
+
+  useBreadcrumbOverride(
+    contract
+      ? [
+          { title: 'Contracts & Pricing', to: '/contract-pricing' },
+          { title: (contract as any).contractName || (contract as any).name || 'Contract detail' },
+        ]
+      : null,
+  );
 
   // Modals
   const [rejectOpen, setRejectOpen] = useState(false);

@@ -17,6 +17,8 @@ export const notificationPreferences = sqliteTable(
     customEmail: text("custom_email"),
     customPhone: text("custom_phone"),
     customWebhookUrl: text("custom_webhook_url"),
+    // When recipientType='GROUP', this points at a user_groups row whose members receive the notification.
+    recipientGroupId: text("recipient_group_id"),
     isActive: integer("is_active").notNull().default(1),
     createdAt: text("created_at")
       .notNull()
@@ -76,5 +78,6 @@ export const NOTIFICATION_RECIPIENT_TYPES = [
   "CLINICIAN",
   "PROCUREMENT_TEAM",
   "CUSTOM",
+  "GROUP", // routes to all members of `recipient_group_id` (user_groups row)
 ] as const;
 export type NotificationRecipientType = (typeof NOTIFICATION_RECIPIENT_TYPES)[number];

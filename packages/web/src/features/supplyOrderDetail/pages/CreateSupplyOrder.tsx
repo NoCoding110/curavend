@@ -178,6 +178,98 @@ const CreateSupplyOrder: React.FC = () => {
   );
   const [hcpcOptions, setHcpcOptions] = useState<Record<string, any[]>>({});
   const [hcpcLoading, setHcpcLoading] = useState<Record<string, boolean>>({});
+  // Formulary decisions per HCPC row (Feature 7 integration)
+  const [formularyDecisions, setFormularyDecisions] = useState<
+    Record<string, {
+      decision: 'ON_FORMULARY' | 'OFF_FORMULARY' | 'RESTRICTED';
+      maxPrice: number | null;
+      preferredVendorId: string | null;
+      substitutes: Array<{
+        substituteHcpcCode: string;
+        substituteDescription: string | null;
+        priority: number;
+      }>;
+    } | null>
+  >({});
+  const lookupFormulary = async (itemKey: string, code: string) => {
+    if (!code) {
+      setFormularyDecisions((s) => ({ ...s, [itemKey]: null }));
+      return;
+    }
+    try {
+      const { get } = await import('../../../api/client');
+      const r = await get<{ decision: string; item: any; substitutes?: any[] }>(
+        `/formulary/resolve`, { hcpcCode: code },
+      );
+      setFormularyDecisions((s) => ({
+        ...s,
+        [itemKey]: {
+          decision: r.decision as any,
+          maxPrice: r.item?.maxUnitPriceUsd ?? null,
+          preferredVendorId: r.item?.preferredVendorId ?? null,
+          substitutes: Array.isArray(r.substitutes) ? r.substitutes : [],
+        },
+      }));
+    } catch {
+      // user may lack hospital context (e.g. admin without explicit hospitalId) — silently skip
+      setFormularyDecisions((s) => ({ ...s, [itemKey]: null }));
+    }
+  };
+
+  // One-click swap: write a substitution_audit_log row, then replace the
+  // row's HCPC + re-run the formulary lookup. Backend enforces a governance
+  // gate — ad-hoc swaps require an approverUserId, which we prompt for on
+  // demand. Audit failures abort the swap (no silent rewrites).
+  const swapToSubstitute = async (
+    itemKey: string,
+    sub: { substituteHcpcCode: string; substituteDescription: string | null },
+  ) => {
+    const fromHcpc = hcpcItems.find((it) => it.key === itemKey)?.code;
+    if (!fromHcpc) return;
+    const { post } = await import('../../../api/client');
+    const { message } = await import('antd');
+
+    const writeLog = async (approverUserId?: string) => post('/substitutions/log', {
+      fromHcpcCode: fromHcpc,
+      toHcpcCode: sub.substituteHcpcCode,
+      contextType: 'ORDER_CREATE',
+      contextId: savedOrder?.id ?? null,
+      reason: 'Substitute chip clicked in wizard',
+      approverUserId,
+    });
+
+    try {
+      await writeLog();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error ?? '';
+      if (msg.includes('approved-substitutes')) {
+        const approverId = window.prompt(
+          `${sub.substituteHcpcCode} is not pre-approved for ${fromHcpc}. ` +
+          `Enter the approving user's ID to record this ad-hoc swap:`,
+        )?.trim();
+        if (!approverId) return; // user bailed
+        try {
+          await writeLog(approverId);
+        } catch (err2: any) {
+          message.error(err2?.response?.data?.error ?? 'Audit log failed');
+          return;
+        }
+      } else {
+        message.error(msg || 'Audit log failed');
+        return;
+      }
+    }
+
+    // Audit succeeded → perform the swap.
+    setHcpcItems((items) =>
+      items.map((it) =>
+        it.key === itemKey
+          ? { ...it, code: sub.substituteHcpcCode, description: sub.substituteDescription ?? it.description }
+          : it,
+      ),
+    );
+    void lookupFormulary(itemKey, sub.substituteHcpcCode);
+  };
   const hcpcTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [icd10Options, setIcd10Options] = useState<any[]>([]);
   const [icd10Loading, setIcd10Loading] = useState(false);
@@ -982,6 +1074,8 @@ const CreateSupplyOrder: React.FC = () => {
                             : it
                         )
                       );
+                      // Kick off a formulary lookup for the selected code
+                      lookupFormulary(item.key, val || '');
                     }}
                     allowClear
                     onClear={() => {
@@ -1030,6 +1124,49 @@ const CreateSupplyOrder: React.FC = () => {
                   )}
                 </Col>
               </Row>
+              {/* Formulary decision banner (Feature 7 integration) */}
+              {formularyDecisions[item.key] && (
+                <div style={{ marginTop: 8, paddingLeft: 24 }}>
+                  {formularyDecisions[item.key]!.decision === 'ON_FORMULARY' && (
+                    <Tag color="green">On formulary</Tag>
+                  )}
+                  {formularyDecisions[item.key]!.decision === 'OFF_FORMULARY' && (
+                    <Tag color="orange">⚠ Off-formulary — requires approval</Tag>
+                  )}
+                  {formularyDecisions[item.key]!.decision === 'RESTRICTED' && (
+                    <Tag color="red">⚠ Restricted item — needs special approval</Tag>
+                  )}
+                  {formularyDecisions[item.key]!.maxPrice != null && (
+                    <Tag color="blue">Max ${formularyDecisions[item.key]!.maxPrice!.toFixed(2)}/unit</Tag>
+                  )}
+                  {formularyDecisions[item.key]!.preferredVendorId && (
+                    <Tag color="purple">Preferred vendor on file</Tag>
+                  )}
+
+                  {/* Substitute chips — PV2 caveat 2.
+                      Show approved substitutes whenever any exist, ranked by
+                      priority. One-click swap rewrites the row + re-lookups. */}
+                  {formularyDecisions[item.key]!.substitutes.length > 0 && (
+                    <div style={{ marginTop: 6, fontSize: 12 }}>
+                      <span style={{ color: '#666', marginRight: 6 }}>Approved substitutes:</span>
+                      {formularyDecisions[item.key]!.substitutes.slice(0, 5).map((sub) => (
+                        <Tag
+                          key={sub.substituteHcpcCode}
+                          color="cyan"
+                          style={{ cursor: 'pointer', marginInlineEnd: 4 }}
+                          onClick={() => swapToSubstitute(item.key, sub)}
+                          title={sub.substituteDescription ?? sub.substituteHcpcCode}
+                        >
+                          ⇄ {sub.substituteHcpcCode}
+                          {sub.priority != null && (
+                            <span style={{ marginLeft: 4, opacity: 0.6 }}>(p{sub.priority})</span>
+                          )}
+                        </Tag>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </Card>
           ))
         )}

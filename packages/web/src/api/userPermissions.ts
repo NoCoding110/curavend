@@ -6,6 +6,28 @@ export const PERMISSION_RESOURCES = [
   'physicians',
   'orders',
   'vendors',
+  'vendor-locations',
+  'vendor-coverage',
+  'contracts',
+  // Enterprise procurement (Session 11)
+  'requisitions',
+  'formulary',
+  'goods-receipts',
+  // Procurement finance (Session 17)
+  'budgets',
+  'purchase-orders',
+  'gl-ledger',
+  // Procurement v2 (Session 17 tail)
+  'vendor-onboarding',
+  'rmas',
+  'compliance-alerts',
+  'point-of-use',
+  'logistics',
+  // Procurement v3 (Session 17 close)
+  'transfers',
+  'recalls',
+  'controlled-substance',
+  'scorecards',
 ] as const;
 export type PermissionResource = (typeof PERMISSION_RESOURCES)[number];
 

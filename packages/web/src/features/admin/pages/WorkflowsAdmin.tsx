@@ -471,8 +471,8 @@ const WorkflowsAdmin: React.FC = () => {
                   columns={[
                     { title: 'Activity', dataIndex: 'activityName', key: 'a' },
                     { title: 'Status', dataIndex: 'status', key: 's', render: (v: string) => <Tag color={v === 'COMPLETED' ? 'green' : v === 'FAILED' ? 'red' : 'blue'}>{v}</Tag> },
-                    { title: 'Duration', dataIndex: 'durationMs', key: 'd', render: (v) => v != null ? `${v} ms` : '—' },
-                    { title: 'Started', dataIndex: 'startedAt', key: 'sa', render: (v) => dayjs(v).format('HH:mm:ss') },
+                    { title: 'Duration', dataIndex: 'durationMs', key: 'd', render: (v: number | null) => v != null ? `${v} ms` : '—' },
+                    { title: 'Started', dataIndex: 'startedAt', key: 'sa', render: (v: string) => dayjs(v).format('HH:mm:ss') },
                   ] as any}
                 />
               ) : (

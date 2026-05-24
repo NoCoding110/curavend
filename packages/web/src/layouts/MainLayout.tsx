@@ -4,6 +4,8 @@ import { Layout } from 'antd';
 import styled from 'styled-components';
 import Sidebar from '../components/layout/Sidebar';
 import Header from '../components/layout/Header';
+import AutoBreadcrumb from '../components/layout/AutoBreadcrumb';
+import { BreadcrumbProvider } from '../contexts/BreadcrumbContext';
 
 const { Content, Sider } = Layout;
 
@@ -36,6 +38,7 @@ const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
+    <BreadcrumbProvider>
     <StyledLayout>
       <Sider
         collapsible
@@ -63,10 +66,12 @@ const MainLayout: React.FC = () => {
       >
         <Header collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
         <StyledContent>
+          <AutoBreadcrumb />
           <Outlet />
         </StyledContent>
       </Layout>
     </StyledLayout>
+    </BreadcrumbProvider>
   );
 };
 

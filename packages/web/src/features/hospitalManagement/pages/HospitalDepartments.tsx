@@ -482,6 +482,29 @@ const HospitalDepartments: React.FC = () => {
               ))}
             </Select>
           </Form.Item>
+
+          {/* Procurement metadata — used by the budget engine + GL ledger. */}
+          <Form.Item
+            name="costCenter"
+            label="Cost Center"
+            tooltip="Used to match budgets and roll up GL postings"
+          >
+            <Input placeholder="e.g. CC-5300-ORTHO" />
+          </Form.Item>
+          <Form.Item
+            name="glCode"
+            label="GL Account Code"
+            tooltip="Default expense account for invoices charged to this department"
+          >
+            <Input placeholder="e.g. 5300-DME" />
+          </Form.Item>
+          <Form.Item
+            name="serviceLine"
+            label="Service Line"
+            tooltip="e.g. Surgical, Cardiology, Oncology — used for spend roll-ups"
+          >
+            <Input placeholder="e.g. Surgical Services" />
+          </Form.Item>
         </Form>
       </Modal>
     </PageWrapper>

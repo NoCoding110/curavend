@@ -45,6 +45,42 @@ import icd10CodeRoutes from './routes/icd10Codes';
 import cdsHooksRoutes from './routes/cdsHooks';
 import userFilterPresetRoutes from './routes/userFilterPresets';
 import userPermissionRoutes from './routes/userPermissions';
+import userGroupRoutes from './routes/userGroups';
+import gpoRoutes from './routes/gpo';
+import payorRoutes from './routes/payors';
+import forecastingRoutes from './routes/forecasting';
+import priorAuthsRoutes from './routes/priorAuths';
+import ehrRoutes from './routes/ehr';
+import formularyRoutes from './routes/formulary';
+import requisitionRoutes from './routes/requisitions';
+import approvalRulesRoutes from './routes/approvalRules';
+import requisitionTemplateRoutes from './routes/requisitionTemplates';
+import goodsReceiptRoutes from './routes/goodsReceipts';
+import threeWayMatchRoutes from './routes/threeWayMatching';
+import dmeDocumentRoutes from './routes/dmeDocuments';
+import lcdRoutes from './routes/lcd';
+import dmeBundleRoutes from './routes/dmeBundle';
+import dmeposComplianceRoutes from './routes/dmeposCompliance';
+import dmeRentalPeriodRoutes from './routes/dmeRentalPeriods';
+import labInventoryRoutes from './routes/labInventory';
+import backorderRoutes from './routes/backorders';
+import labMovementSearchRoutes from './routes/labMovementSearch';
+import budgetsRoutes from './routes/budgets';
+import departmentSpendRoutes from './routes/departmentSpend';
+import glReportingRoutes from './routes/glReporting';
+import vendorOnboardingRoutes from './routes/vendorOnboarding';
+import rmasRoutes from './routes/rmas';
+import invoiceMatchRulesRoutes from './routes/invoiceMatchRules';
+import itemMasterHygieneRoutes from './routes/itemMasterHygiene';
+import pointOfUseRoutes from './routes/pointOfUse';
+import crossSiteInventoryRoutes from './routes/crossSiteInventory';
+import complianceAlertsRoutes from './routes/complianceAlerts';
+import logisticsRoutes from './routes/logistics';
+import inventoryTransfersRoutes from './routes/inventoryTransfers';
+import recallsRoutes from './routes/recalls';
+import controlledSubstanceRoutes from './routes/controlledSubstance';
+import substitutionsRoutes from './routes/substitutions';
+import procurementAnalyticsRoutes from './routes/procurementAnalytics';
 import webhookRoutes from './routes/webhooks';
 import superVendorRoutes from './routes/superVendors';
 import spendCalculatorRoutes from './routes/spendCalculator';
@@ -69,6 +105,9 @@ import { handleRecurringOrderSpawner } from './cron/recurringOrderSpawner';
 import { handleIntegrationRetry } from './cron/integrationRetry';
 import { handleOrderSlaMonitor } from './cron/orderSlaMonitor';
 import { handleKitLetterSync } from './cron/kitLetterSync';
+import { handleRentalBilling } from './cron/dmeRentalBilling';
+import { handleDmeposExpiry } from './cron/dmeposExpiry';
+import { handleLabAutoReplenishment, handleLabExpiration } from './cron/labReplenishment';
 import externalFulfillmentRoutes from './routes/externalFulfillment';
 import workflowRoutes from './routes/workflows';
 import { sweepExpiredEventWaits } from './services/workflowService';
@@ -171,6 +210,42 @@ app.route('/api/hcpc-codes', hcpcCodeRoutes);
 app.route('/api/icd10-codes', icd10CodeRoutes);
 app.route('/api/user-filter-presets', userFilterPresetRoutes);
 app.route('/api/user-permissions', userPermissionRoutes);
+app.route('/api/user-groups', userGroupRoutes);
+app.route('/api/gpo', gpoRoutes);
+app.route('/api/payors', payorRoutes);
+app.route('/api/forecasting', forecastingRoutes);
+app.route('/api/prior-auths', priorAuthsRoutes);
+app.route('/api/ehr', ehrRoutes);
+app.route('/api/formulary', formularyRoutes);
+app.route('/api/requisitions', requisitionRoutes);
+app.route('/api/approval-rules', approvalRulesRoutes);
+app.route('/api/requisition-templates', requisitionTemplateRoutes);
+app.route('/api/goods-receipts', goodsReceiptRoutes);
+app.route('/api/three-way-match', threeWayMatchRoutes);
+app.route('/api/dme-documents', dmeDocumentRoutes);
+app.route('/api/lcd', lcdRoutes);
+app.route('/api/dme-bundle', dmeBundleRoutes);
+app.route('/api/dmepos-compliance', dmeposComplianceRoutes);
+app.route('/api/dme-rental-periods', dmeRentalPeriodRoutes);
+app.route('/api/lab-inventory', labInventoryRoutes);
+app.route('/api/backorders', backorderRoutes);
+app.route('/api/lab-movements', labMovementSearchRoutes);
+app.route('/api/budgets', budgetsRoutes);
+app.route('/api/reporting/department-spend', departmentSpendRoutes);
+app.route('/api/reporting/gl', glReportingRoutes);
+app.route('/api/vendor-onboarding', vendorOnboardingRoutes);
+app.route('/api/rmas', rmasRoutes);
+app.route('/api/invoice-match-rules', invoiceMatchRulesRoutes);
+app.route('/api/item-master-hygiene', itemMasterHygieneRoutes);
+app.route('/api/point-of-use', pointOfUseRoutes);
+app.route('/api/reporting/cross-site-inventory', crossSiteInventoryRoutes);
+app.route('/api/compliance-alerts', complianceAlertsRoutes);
+app.route('/api/logistics', logisticsRoutes);
+app.route('/api/transfers', inventoryTransfersRoutes);
+app.route('/api/recalls', recallsRoutes);
+app.route('/api/controlled-substance', controlledSubstanceRoutes);
+app.route('/api/substitutions', substitutionsRoutes);
+app.route('/api/reporting', procurementAnalyticsRoutes);
 app.route('/api/super-vendors', superVendorRoutes);
 app.route('/api/spend-calculator', spendCalculatorRoutes);
 app.route('/api/customer-purchase-orders', customerPurchaseOrderRoutes);
@@ -270,6 +345,74 @@ const workerHandler = {
         // Daily kit letter catalog sync (athome parity)
         console.log('[cron] Running kit letter sync');
         ctx.waitUntil(handleKitLetterSync(env));
+        // Daily DME rental billing sweep (Session 14 — Feature 7)
+        console.log('[cron] Running DME rental billing sweep');
+        ctx.waitUntil(
+          handleRentalBilling(env).then(
+            (r) =>
+              console.log(
+                `[cron] Rental billing: processed=${r.processed} billed=${r.billed} capped=${r.capped} errors=${r.errors}`,
+              ),
+            (err) => console.error('[cron] Rental billing failed:', err),
+          ),
+        );
+        // Daily DMEPOS supplier compliance expiry notifier
+        console.log('[cron] Running DMEPOS expiry sweep');
+        ctx.waitUntil(
+          handleDmeposExpiry(env).then(
+            (r) =>
+              console.log(
+                `[cron] DMEPOS expiry: expiring=${r.expiring} alreadyExpired=${r.alreadyExpired} notified=${r.notified}`,
+              ),
+            (err) => console.error('[cron] DMEPOS expiry failed:', err),
+          ),
+        );
+        // Daily lab auto-replenishment (Session 15 — Lab Batch C)
+        console.log('[cron] Running lab auto-replenishment');
+        ctx.waitUntil(
+          handleLabAutoReplenishment(env).then(
+            (r) =>
+              console.log(
+                `[cron] Lab auto-replen: considered=${r.itemsConsidered} created=${r.requisitionsCreated} skipped=${r.skippedExisting} errors=${r.errors}`,
+              ),
+            (err) => console.error('[cron] Lab auto-replen failed:', err),
+          ),
+        );
+        // Daily lab expiration sweep
+        console.log('[cron] Running lab expiration sweep');
+        ctx.waitUntil(
+          handleLabExpiration(env).then(
+            (r) =>
+              console.log(
+                `[cron] Lab expiry: expired=${r.expired} in30=${r.expiringIn30} in60=${r.expiringIn60} in90=${r.expiringIn90}`,
+              ),
+            (err) => console.error('[cron] Lab expiry failed:', err),
+          ),
+        );
+        // Daily compliance sweep (Procurement v2 gap I)
+        console.log('[cron] Running compliance alert sweep');
+        ctx.waitUntil(
+          import('./services/complianceAlertService').then(({ sweepComplianceAlerts }) =>
+            sweepComplianceAlerts(env.DB).then(
+              (r) => console.log(
+                `[cron] Compliance: accred=${r.vendorAccreditation} license=${r.vendorLicense} ins=${r.vendorInsurance} lots=${r.labLots} resolved=${r.resolved}`,
+              ),
+              (err) => console.error('[cron] Compliance sweep failed:', err),
+            ),
+          ),
+        );
+        // Nightly vendor scorecard recompute (Procurement v3 gap J)
+        console.log('[cron] Running vendor scorecard compute');
+        ctx.waitUntil(
+          import('./services/vendorScorecardService').then(({ computeVendorScorecards }) =>
+            computeVendorScorecards(env.DB).then(
+              (r) => console.log(
+                `[cron] Scorecard: vendors=${r.vendorsProcessed} snapshots=${r.snapshotsWritten} errors=${r.errors}`,
+              ),
+              (err) => console.error('[cron] Scorecard compute failed:', err),
+            ),
+          ),
+        );
         break;
       }
       case '0 6 1 * *': {
@@ -339,14 +482,18 @@ const workerHandler = {
 // Wrap with Sentry when SENTRY_DSN is configured (no-op otherwise).
 // @sentry/cloudflare wraps fetch/scheduled/queue and automatically captures errors.
 export default Sentry.withSentry(
-  (env: Env) =>
-    env.SENTRY_DSN
+  // @sentry/cloudflare types `env` as `unknown`; cast to our Env for the
+  // SENTRY_DSN/ENVIRONMENT lookups.
+  (env: unknown) => {
+    const e = env as Env;
+    return e.SENTRY_DSN
       ? {
-          dsn: env.SENTRY_DSN,
+          dsn: e.SENTRY_DSN,
           tracesSampleRate: 0.1,
-          environment: env.ENVIRONMENT ?? 'production',
+          environment: e.ENVIRONMENT ?? 'production',
         }
-      : {},
+      : {};
+  },
   workerHandler as any,
 );
 

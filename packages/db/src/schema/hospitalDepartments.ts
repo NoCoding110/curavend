@@ -13,6 +13,10 @@ export const hospitalDepartments = sqliteTable(
     facilityId: text("facility_id"),
     name: text("name").notNull(),
     number: text("number"),
+    // Procurement metadata — surfaced in requisition intake + budget scoping.
+    costCenter: text("cost_center"),
+    glCode: text("gl_code"),
+    serviceLine: text("service_line"),
     status: text("status").notNull().default("ACTIVE"),
     createdAt: text("created_at")
       .notNull()

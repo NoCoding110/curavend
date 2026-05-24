@@ -217,7 +217,7 @@ const Login: React.FC = () => {
         }),
       );
       setPhiModalVisible(false);
-      navigate('/');
+      navigate('/dashboard');
     }
   };
 

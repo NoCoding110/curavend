@@ -43,3 +43,6 @@ Thumbs.db
 
 # Sensitive files
 turnstile keys.txt
+
+# Local Claude Code state
+.claude/

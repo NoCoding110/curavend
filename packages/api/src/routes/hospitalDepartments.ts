@@ -111,6 +111,10 @@ app.post('/', requirePermission('departments', 'WRITE'), async (c) => {
     facilityId: body.facilityId || null,
     name: body.name,
     number: body.number || null,
+    // Procurement metadata (gap 1).
+    costCenter: body.costCenter || null,
+    glCode: body.glCode || null,
+    serviceLine: body.serviceLine || null,
     status: body.status || 'ACTIVE',
     createdAt: now,
     updatedAt: now,
@@ -133,6 +137,9 @@ app.put('/:id', requirePermission('departments', 'WRITE'), async (c) => {
   if (body.name !== undefined) updateData.name = body.name;
   if (body.number !== undefined) updateData.number = body.number;
   if (body.facilityId !== undefined) updateData.facilityId = body.facilityId;
+  if (body.costCenter !== undefined) updateData.costCenter = body.costCenter;
+  if (body.glCode !== undefined) updateData.glCode = body.glCode;
+  if (body.serviceLine !== undefined) updateData.serviceLine = body.serviceLine;
   if (body.status !== undefined) updateData.status = body.status;
 
   await db.update(hospitalDepartments).set(updateData).where(eq(hospitalDepartments.id, id));

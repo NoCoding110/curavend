@@ -17,6 +17,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { labsApi } from '../../../api/labs';
 import { workflowsApi } from '../../../api/workflows';
 import { Form } from 'antd';
+import { useBreadcrumbOverride } from '../../../contexts/BreadcrumbContext';
 
 const { Title } = Typography;
 
@@ -44,6 +45,16 @@ const LabOrderDetail: React.FC = () => {
   const [wfTerminateReason, setWfTerminateReason] = useState('');
   const [wfEventOpen, setWfEventOpen] = useState(false);
   const [wfEventForm] = Form.useForm();
+
+  useBreadcrumbOverride(
+    order
+      ? [
+          { title: 'Labs', to: '/labs' },
+          { title: 'Lab Orders', to: '/labs/orders' },
+          { title: order.orderNumber || 'Order detail' },
+        ]
+      : null,
+  );
 
   const refresh = async (opts: { showSpinner?: boolean } = {}) => {
     if (opts.showSpinner) setLoading(true);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useBreadcrumbOverride } from '../../../contexts/BreadcrumbContext';
 import {
   Card,
   Row,
@@ -30,9 +31,11 @@ import {
   CloseCircleOutlined,
   ExclamationCircleOutlined,
   HistoryOutlined,
+  InboxOutlined,
   UnorderedListOutlined,
   ClockCircleOutlined,
   FilePdfOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import type { ColumnsType } from 'antd/es/table';
@@ -41,6 +44,11 @@ import { get } from '../../../api/client';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store/store';
 import { useResizableColumns } from '../../../components/table/useResizableColumns';
+import { usePermissions } from '../../../hooks/usePermissions';
+import { DmeDocPacket } from '../components/DmeDocPacket';
+import { DmeRentalSchedule } from '../components/DmeRentalSchedule';
+import { LcdCheckHistory } from '../components/LcdCheckHistory';
+import { BackordersPanel } from '../components/BackordersPanel';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -150,6 +158,7 @@ const SupplyOrderDetail: React.FC = () => {
   const { orderId, id } = useParams<{ orderId?: string; id?: string }>();
   const resolvedId = id || orderId || '';
   const navigate = useNavigate();
+  const { canWrite: _canWrite } = usePermissions();
   const userData = useSelector((state: RootState) => state.auth.userData);
   const isVendor = userData?.userType === 'VENDOR';
   const isAdmin = userData?.userType === 'ADMIN';
@@ -157,6 +166,15 @@ const SupplyOrderDetail: React.FC = () => {
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+
+  useBreadcrumbOverride(
+    order
+      ? [
+          { title: 'Orders', to: '/provider-orders' },
+          { title: (order as any).identifier || (order as any).orderNumber || 'Order detail' },
+        ]
+      : null,
+  );
 
   // Assign Vendor Modal
   const [assignVendorVisible, setAssignVendorVisible] = useState(false);
@@ -167,6 +185,13 @@ const SupplyOrderDetail: React.FC = () => {
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [nextStatus, setNextStatus] = useState('');
   const [statusReason, setStatusReason] = useState('');
+  const [shipments, setShipments] = useState<any[]>([]);
+  const [shipmentsLoading, setShipmentsLoading] = useState(false);
+  // Goods Receipts against this order (Feature 11 integration)
+  const [receipts, setReceipts] = useState<any[]>([]);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
+  // Source requisition info (Feature 8 integration)
+  const [sourceReq, setSourceReq] = useState<{ id: string; requisitionNumber: string; title: string } | null>(null);
 
   const fetchOrder = useCallback(async () => {
     if (!resolvedId) return;
@@ -184,6 +209,58 @@ const SupplyOrderDetail: React.FC = () => {
   useEffect(() => {
     fetchOrder();
   }, [fetchOrder]);
+
+  // Resolve the source requisition (if any) — only when order is loaded
+  useEffect(() => {
+    if (!order?.requisitionId) {
+      setSourceReq(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const req = await get<{ id: string; requisitionNumber: string; title: string }>(
+          `/requisitions/${order.requisitionId}`,
+        );
+        if (!cancelled) setSourceReq(req);
+      } catch { /* noop */ }
+    })();
+    return () => { cancelled = true; };
+  }, [order?.requisitionId]);
+
+  // Fetch any goods receipts logged against this order
+  const fetchReceipts = useCallback(async () => {
+    if (!resolvedId) return;
+    setReceiptsLoading(true);
+    try {
+      const resp = await get<{ items: any[] }>(`/goods-receipts?orderId=${resolvedId}`);
+      setReceipts(resp?.items ?? []);
+    } catch {
+      setReceipts([]);
+    } finally {
+      setReceiptsLoading(false);
+    }
+  }, [resolvedId]);
+  useEffect(() => { fetchReceipts(); }, [fetchReceipts]);
+
+  // Load shipments separately — they live in their own endpoint and may be added/updated independently of the order.
+  const fetchShipments = useCallback(async () => {
+    if (!resolvedId) return;
+    setShipmentsLoading(true);
+    try {
+      const resp = await get<{ items: any[] }>(`/orders/${resolvedId}/shipments`);
+      setShipments(resp?.items ?? []);
+    } catch {
+      // Non-fatal — shipments are an optional section. Don't surface a toast.
+      setShipments([]);
+    } finally {
+      setShipmentsLoading(false);
+    }
+  }, [resolvedId]);
+
+  useEffect(() => {
+    fetchShipments();
+  }, [fetchShipments]);
 
   // ── Action handlers ──────────────────────────────────────────────────────────
 
@@ -242,14 +319,27 @@ const SupplyOrderDetail: React.FC = () => {
     (item: any, idx: number) => ({ ...item, key: item.id ?? item._id ?? String(idx) }),
   );
 
-  const orderHistory: any[] = (order?.history ?? order?.statusHistory ?? order?.timeline ?? []).map(
-    (h: any, idx: number) => ({ ...h, key: idx }),
-  );
+  // API returns history under `orderHistory`; older shapes used `history` / `statusHistory` / `timeline`.
+  const orderHistory: any[] = (
+    order?.orderHistory ??
+    order?.history ??
+    order?.statusHistory ??
+    order?.timeline ??
+    []
+  ).map((h: any, idx: number) => ({ ...h, key: idx }));
 
-  const orderTotal = orderItems.reduce(
-    (acc: number, item: any) =>
-      acc + (item.total ?? (item.quantity ?? 0) * (item.unitPrice ?? item.price ?? 0)),
-    0,
+  // Sum item totals, skipping items with unknown unit price.
+  const orderTotal = orderItems.reduce((acc: number, item: any) => {
+    if (item.total !== undefined && item.total !== null) return acc + item.total;
+    const unit = item.unitPrice ?? item.price;
+    if (unit === undefined || unit === null) return acc;
+    return acc + (item.quantity ?? 0) * unit;
+  }, 0);
+  // Track whether any item is missing pricing so the footer can show "—" instead of an artificially-low total.
+  const orderTotalIsPartial = orderItems.some(
+    (item: any) =>
+      (item.total === undefined || item.total === null) &&
+      (item.unitPrice ?? item.price) == null,
   );
 
   // ── Table columns ────────────────────────────────────────────────────────────
@@ -285,8 +375,14 @@ const SupplyOrderDetail: React.FC = () => {
       key: 'total',
       width: 120,
       align: 'right',
-      render: (_: unknown, r: any) =>
-        formatCurrency(r.total ?? (r.quantity ?? 0) * (r.unitPrice ?? r.price ?? 0)),
+      render: (_: unknown, r: any) => {
+        // If we have an explicit total, use it.
+        if (r.total !== undefined && r.total !== null) return formatCurrency(r.total);
+        // Otherwise compute from qty * unitPrice — but only if unitPrice is known. If unit price is missing, show "—" to stay consistent with the Unit Price cell.
+        const unit = r.unitPrice ?? r.price;
+        if (unit === undefined || unit === null) return '—';
+        return formatCurrency((r.quantity ?? 0) * unit);
+      },
     },
   ];
 
@@ -632,6 +728,11 @@ const SupplyOrderDetail: React.FC = () => {
                 Order {order.identifier || resolvedId}
               </Title>
               {renderStatusTag()}
+              {sourceReq && (
+                <Tag color="purple" style={{ cursor: 'pointer' }} onClick={() => navigate('/requisitions')}>
+                  From {sourceReq.requisitionNumber}
+                </Tag>
+              )}
             </Space>
           </Col>
           <Col>{renderActionButtons()}</Col>
@@ -797,7 +898,7 @@ const SupplyOrderDetail: React.FC = () => {
                   </Table.Summary.Cell>
                   <Table.Summary.Cell index={4} align="right">
                     <Text strong style={{ color: BRAND_COLOR }}>
-                      {formatCurrency(orderTotal)}
+                      {orderTotalIsPartial && orderTotal === 0 ? '—' : formatCurrency(orderTotal)}
                     </Text>
                   </Table.Summary.Cell>
                 </Table.Summary.Row>
@@ -805,6 +906,74 @@ const SupplyOrderDetail: React.FC = () => {
             />
           )}
         </SectionCard>
+
+        {/* Shipments */}
+        {(shipmentsLoading || shipments.length > 0) && (
+          <SectionCard
+            title={
+              <Space>
+                <InboxOutlined style={{ color: BRAND_COLOR }} />
+                Shipments
+              </Space>
+            }
+          >
+            <Table
+              dataSource={shipments.map((s: any, i: number) => ({ ...s, key: s.id ?? i }))}
+              loading={shipmentsLoading}
+              pagination={false}
+              size="small"
+              locale={{ emptyText: 'No shipments recorded yet.' }}
+              columns={[
+                {
+                  title: '#',
+                  dataIndex: 'shipmentSequence',
+                  width: 60,
+                  render: (v: number, _r: any, idx: number) => v ?? idx + 1,
+                },
+                {
+                  title: 'Carrier',
+                  dataIndex: 'carrierCode',
+                  width: 100,
+                  render: (v: string) => v || '—',
+                },
+                {
+                  title: 'Tracking #',
+                  dataIndex: 'trackingNumber',
+                  render: (v: string, r: any) =>
+                    v ? (
+                      r.trackingUrl ? (
+                        <a href={r.trackingUrl} target="_blank" rel="noreferrer">
+                          {v}
+                        </a>
+                      ) : (
+                        v
+                      )
+                    ) : (
+                      '—'
+                    ),
+                },
+                {
+                  title: 'Shipped',
+                  dataIndex: 'shippedAt',
+                  width: 140,
+                  render: (v: string) => formatDate(v),
+                },
+                {
+                  title: 'Delivered',
+                  dataIndex: 'deliveredAt',
+                  width: 140,
+                  render: (v: string) => formatDate(v),
+                },
+                {
+                  title: 'Notes',
+                  dataIndex: 'notes',
+                  render: (v: string) =>
+                    v ? <Text type="secondary">{v}</Text> : <Text type="secondary">—</Text>,
+                },
+              ]}
+            />
+          </SectionCard>
+        )}
 
         {/* Order History Timeline */}
         {orderHistory.length > 0 && (
@@ -856,6 +1025,87 @@ const SupplyOrderDetail: React.FC = () => {
             />
           </SectionCard>
         )}
+        {/* DME Document Packet (Session 13 — Feature 1) */}
+        <DmeDocPacket orderId={resolvedId!} canEdit={true} />
+
+        {/* LCD coverage history (auto-hides when no checks) */}
+        <LcdCheckHistory orderId={resolvedId!} />
+
+        {/* DME rental schedule (auto-hides when no periods) */}
+        <DmeRentalSchedule orderId={resolvedId!} />
+
+        {/* Backorders (auto-hides when none) */}
+        <BackordersPanel orderId={resolvedId!} />
+
+        {/* Goods Receipts (Feature 11) */}
+        <SectionCard
+          title={
+            <Space>
+              <InboxOutlined style={{ color: BRAND_COLOR }} />
+              Goods Receipts
+              {receipts.length > 0 && <Tag>{receipts.length}</Tag>}
+            </Space>
+          }
+          extra={
+            _canWrite('goods-receipts') ? (
+              <Button
+                type="primary"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => navigate(`/goods-receipts?orderId=${resolvedId}`)}
+                style={{ background: BRAND_COLOR, borderColor: BRAND_COLOR }}
+              >
+                New Receipt
+              </Button>
+            ) : null
+          }
+        >
+          {receipts.length === 0 ? (
+            <Text type="secondary">
+              {receiptsLoading ? 'Loading…' : 'No goods receipts logged yet. Click "New Receipt" to record what arrived.'}
+            </Text>
+          ) : (
+            <Table
+              dataSource={receipts.map((r) => ({ ...r, key: r.id }))}
+              loading={receiptsLoading}
+              pagination={false}
+              size="small"
+              columns={[
+                {
+                  title: 'GRN #',
+                  dataIndex: 'receiptNumber',
+                  width: 160,
+                  render: (v: string) => <strong>{v}</strong>,
+                },
+                {
+                  title: 'Status',
+                  dataIndex: 'status',
+                  width: 100,
+                  render: (s: string) => (
+                    <Tag color={s === 'POSTED' ? 'green' : s === 'CANCELLED' ? 'red' : 'default'}>{s}</Tag>
+                  ),
+                },
+                {
+                  title: 'Received',
+                  dataIndex: 'receivedAt',
+                  render: (v: string) => formatDate(v),
+                },
+                {
+                  title: 'Carrier',
+                  dataIndex: 'carrier',
+                  width: 110,
+                  render: (v: string | null) => v ?? '—',
+                },
+                {
+                  title: 'Tracking',
+                  dataIndex: 'trackingNumber',
+                  width: 140,
+                  render: (v: string | null) => v ?? '—',
+                },
+              ]}
+            />
+          )}
+        </SectionCard>
       </Space>
 
       {/* Assign Vendor Modal */}

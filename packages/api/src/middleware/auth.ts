@@ -36,6 +36,12 @@ const PUBLIC_PREFIXES = [
   '/api/external/fulfillment/', // HMAC-protected webhooks
 ];
 
+/** Patterns that bypass auth — used for paths with dynamic segments. */
+const PUBLIC_PATTERNS: RegExp[] = [
+  // EHR ingest webhooks: /api/ehr/:connectionId/ingest — HMAC-protected per-connection
+  /^\/api\/ehr\/[A-Za-z0-9-]+\/ingest$/,
+];
+
 export const authMiddleware = (): MiddlewareHandler<{
   Bindings: Env;
   Variables: { user: AuthUser };
@@ -46,7 +52,8 @@ export const authMiddleware = (): MiddlewareHandler<{
     // Skip auth for public routes
     if (
       PUBLIC_PATHS.some((p) => path === p || path.startsWith('/cds-services')) ||
-      PUBLIC_PREFIXES.some((p) => path.startsWith(p))
+      PUBLIC_PREFIXES.some((p) => path.startsWith(p)) ||
+      PUBLIC_PATTERNS.some((re) => re.test(path))
     ) {
       await next();
       return;

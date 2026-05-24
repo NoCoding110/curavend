@@ -345,6 +345,27 @@ app.put('/:id/send', async (c) => {
     await c.env.EVENTS_QUEUE.send({ type: 'invoice.sent', payload: { invoiceId: id } });
   } catch { /* empty */ }
 
+  // GL hook (gap 6): post INVOICE_APPROVE on first send. We treat
+  // INVOICE_SENT as the approval boundary because the existing flow has no
+  // explicit /approve endpoint — sending an invoice means it's been vetted.
+  try {
+    const inv = chkSend[0] as any;
+    const total = Number(inv.totalAmount ?? inv.invoiceTotalAmount ?? 0);
+    if (total > 0 && inv.hospitalId) {
+      const { postInvoiceApprove } = await import('../services/glService');
+      await postInvoiceApprove(c.env.DB, {
+        hospitalId: inv.hospitalId,
+        invoiceId: id,
+        departmentId: inv.departmentId ?? null,
+        amountUsd: total,
+        memo: `Invoice ${inv.invoiceNumber ?? id.slice(0, 8)} sent / approved`,
+        postedByUserId: user.id,
+      });
+    }
+  } catch (err) {
+    console.error('[invoice-send] GL post failed', err);
+  }
+
   const result = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
   return c.json(result[0]);
 });
@@ -443,6 +464,24 @@ app.put('/:id/mark-paid', async (c) => {
   try {
     await c.env.EVENTS_QUEUE.send({ type: 'invoice.paid', payload: { invoiceId: id } });
   } catch { /* empty */ }
+
+  // GL hook (gap 6): post INVOICE_PAY when invoice is marked paid.
+  try {
+    const inv = chkPaid[0] as any;
+    const amount = Number(body.amountPaid ?? inv.totalAmount ?? 0);
+    if (amount > 0 && inv.hospitalId) {
+      const { postInvoicePay } = await import('../services/glService');
+      await postInvoicePay(c.env.DB, {
+        hospitalId: inv.hospitalId,
+        invoiceId: id,
+        amountUsd: amount,
+        memo: `Invoice ${inv.invoiceNumber ?? id.slice(0, 8)} paid`,
+        postedByUserId: user.id,
+      });
+    }
+  } catch (err) {
+    console.error('[invoice-mark-paid] GL post failed', err);
+  }
 
   const result = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
   return c.json(result[0]);

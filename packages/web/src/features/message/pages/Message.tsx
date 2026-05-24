@@ -31,11 +31,13 @@ import type { RootState } from '../../../store/store';
 
 dayjs.extend(relativeTime);
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 const PageWrapper = styled.div`
   padding: 24px;
-  height: calc(100vh - 120px);
+  height: calc(100vh - 160px);
+  display: flex;
+  flex-direction: column;
 `;
 
 const ChatContainer = styled(Card)`
@@ -444,6 +446,7 @@ const Message: React.FC = () => {
 
   return (
     <PageWrapper>
+      <Title level={3} style={{ margin: '0 0 16px 0' }}>Chat</Title>
       <ChatContainer>
         {/* Left panel: Room list */}
         <RoomList>

@@ -134,6 +134,11 @@ export async function del<T>(url: string): Promise<T> {
   return response.data;
 }
 
+export async function patch<T>(url: string, data?: any): Promise<T> {
+  const response = await apiClient.patch<T>(url, data);
+  return response.data;
+}
+
 export async function uploadFile(
   url: string,
   file: File,

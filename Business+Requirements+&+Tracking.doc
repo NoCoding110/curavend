@@ -1,0 +1,716 @@
+Date: Thu, 16 Apr 2026 15:16:24 +0000 (UTC)
+Message-ID: <1072168419.1.1776352584708@81854e45d764>
+Subject: Exported From Confluence
+MIME-Version: 1.0
+Content-Type: multipart/related; 
+	boundary="----=_Part_0_298238905.1776352584680"
+
+------=_Part_0_298238905.1776352584680
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Content-Location: file:///C:/exported.html
+
+<html xmlns:o=3D'urn:schemas-microsoft-com:office:office'
+      xmlns:w=3D'urn:schemas-microsoft-com:office:word'
+      xmlns:v=3D'urn:schemas-microsoft-com:vml'
+      xmlns=3D'urn:w3-org-ns:HTML'>
+<head>
+    <meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8=
+">
+    <title>Business Requirements &amp; Tracking</title>
+    <!--[if gte mso 9]>
+    <xml>
+        <o:OfficeDocumentSettings>
+            <o:TargetScreenSize>1024x640</o:TargetScreenSize>
+            <o:PixelsPerInch>72</o:PixelsPerInch>
+            <o:AllowPNG/>
+        </o:OfficeDocumentSettings>
+        <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>90</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+                <!--
+        @page Section1 {
+            size: 8.5in 11.0in;
+            margin: 1.0in;
+            mso-header-margin: .5in;
+            mso-footer-margin: .5in;
+            mso-paper-source: 0;
+        }
+
+        table {
+            border: solid 1px;
+            border-collapse: collapse;
+        }
+
+        table td, table th {
+            border: solid 1px;
+            padding: 5px;
+        }
+
+        td {
+            page-break-inside: avoid;
+        }
+
+        tr {
+            page-break-after: avoid;
+        }
+
+        div.Section1 {
+            page: Section1;
+        }
+
+        /* Confluence print stylesheet. Common to all themes for print medi=
+a */
+/* Full of !important until we improve batching for print CSS */
+
+@media print {
+    #main {
+        padding-bottom: 1em !important; /* The default padding of 6em is to=
+o much for printouts */
+    }
+
+    body {
+        font: var(--ds-font-body-small, Arial, Helvetica, FreeSans, sans-se=
+rif);
+    }
+
+    body, #full-height-container, #main, #page, #content, .has-personal-sid=
+ebar #content {
+        background: var(--ds-surface, #fff) !important;
+        color: var(--ds-text, #000) !important;
+        border: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+    }
+
+    a, a:link, a:visited, a:focus, a:hover, a:active {
+        color: var(--ds-text, #000);
+    }
+
+    #content h1,
+    #content h2,
+    #content h3,
+    #content h4,
+    #content h5,
+    #content h6 {
+        page-break-after: avoid;
+    }
+
+    pre {
+        font: var(--ds-font-code, Monaco, "Courier New", monospace);
+    }
+
+    #header,
+    .aui-header-inner,
+    #navigation,
+    #sidebar,
+    .sidebar,
+    #personal-info-sidebar,
+    .ia-fixed-sidebar,
+    .page-actions,
+    .navmenu,
+    .ajs-menu-bar,
+    .noprint,
+    .inline-control-link,
+    .inline-control-link a,
+    a.show-labels-editor,
+    .global-comment-actions,
+    .comment-actions,
+    .quick-comment-container,
+    #addcomment {
+        display: none !important;
+    }
+
+    /* CONF-28544 cannot print multiple pages in IE */
+    #splitter-content {
+        position: relative !important;
+    }
+
+    .comment .date::before {
+        content: none !important; /* remove middot for print view */
+    }
+
+    h1.pagetitle img {
+        height: auto;
+        width: auto;
+    }
+
+    .print-only {
+        display: block;
+    }
+
+    #footer {
+        position: relative !important; /* CONF-17506 Place the footer at en=
+d of the content */
+        margin: 0;
+        padding: 0;
+        background: none;
+        clear: both;
+    }
+
+    #poweredby {
+        border-top: none;
+        background: none;
+    }
+
+    #poweredby li.print-only {
+        display: list-item;
+        font-style: italic;
+    }
+
+    #poweredby li.noprint {
+        display: none;
+    }
+
+    /* no width controls in print */
+    .wiki-content .table-wrap,
+    .wiki-content p,
+    .panel .codeContent,
+    .panel .codeContent pre,
+    .image-wrap {
+        overflow: visible !important;
+    }
+
+    /* TODO - should this work? */
+    #children-section,
+    #comments-section .comment,
+    #comments-section .comment .comment-body,
+    #comments-section .comment .comment-content,
+    #comments-section .comment p {
+        page-break-inside: avoid;
+    }
+
+    #page-children a {
+        text-decoration: none;
+    }
+
+    /**
+     hide twixies
+
+     the specificity here is a hack because print styles
+     are getting loaded before the base styles. */
+    #comments-section.pageSection .section-header,
+    #comments-section.pageSection .section-title,
+    #children-section.pageSection .section-header,
+    #children-section.pageSection .section-title,
+    .children-show-hide {
+        padding-left: 0;
+        margin-left: 0;
+    }
+
+    .children-show-hide.icon {
+        display: none;
+    }
+
+    /* personal sidebar */
+    .has-personal-sidebar #content {
+        margin-right: 0px;
+    }
+
+    .has-personal-sidebar #content .pageSection {
+        margin-right: 0px;
+    }
+
+    .no-print, .no-print * {
+        display: none !important;
+    }
+}
+-->
+    </style>
+</head>
+<body>
+    <h1>Business Requirements &amp; Tracking</h1>
+    <div class=3D"Section1">
+        <h1 local-id=3D"83537da7f7f5" id=3D"BusinessRequirements&amp;Tracki=
+ng-ProxyIQ-BusinessRequirements&amp;Tracking">ProxyIQ - Business Requiremen=
+ts &amp; Tracking</h1>
+<p local-id=3D"69e377f6c896">Last Updated: March 13, 2026</p>
+<hr local-id=3D"b780385e68d4">
+<h2 local-id=3D"2a98026e9ac9" id=3D"BusinessRequirements&amp;Tracking-=F0=
+=9F=8E=AFHowtoUseThisPage">=F0=9F=8E=AF How to Use This Page</h2>
+<ul local-id=3D"41e52d6daeae">
+<li local-id=3D"6213e41ebc14">
+<p local-id=3D"eff918171e13">Each requirement below links to Jira tickets</=
+p></li>
+<li local-id=3D"984d7683f836">
+<p local-id=3D"45c0efc86108">Status updates automatically from Jira</p></li=
+>
+<li local-id=3D"208238d1f2a2">
+<p local-id=3D"437ee6c4818b">Click ticket numbers to view full details</p><=
+/li>
+</ul>
+<hr local-id=3D"06824059fcc6">
+<h2 local-id=3D"14ef6ba6403e" id=3D"BusinessRequirements&amp;Tracking-Proxy=
+IQScalabilityEnhancement">ProxyIQ Scalability Enhancement</h2>
+<p local-id=3D"580df25abf6c"><strong>Business Need:</strong> Improve ProxyI=
+Q platform scalability for high-volume HL7/FHIR data ingestion and multi-te=
+nant operations</p>
+<p local-id=3D"3328d254c050"><strong>Expected Outcome:</strong></p>
+<ul local-id=3D"95e9a17322c2">
+<li local-id=3D"3f6fe29c6667">
+<p local-id=3D"88a797b4f8b9">Handle increased data volume without performan=
+ce degradation</p></li>
+<li local-id=3D"c8ec2c5b59d9">
+<p local-id=3D"c98604c5d78f">Support multiple tenants with isolated data sc=
+hemas</p></li>
+<li local-id=3D"d968dd05f0d8">
+<p local-id=3D"e675711b568f">Optimize HL7/FHIR message processing</p></li>
+</ul>
+<p local-id=3D"e49927a73e96"><strong>What We're Building:</strong></p>
+<ul local-id=3D"b289af189b76">
+<li local-id=3D"031d1a3dceb2">
+<p local-id=3D"ece541517e82">Schema segregation for multi-tenant architectu=
+re</p></li>
+<li local-id=3D"5b7444e34787">
+<p local-id=3D"87b0b98fe811">HL7/FHIR data processing optimization</p></li>
+<li local-id=3D"f764146c9d13">
+<p local-id=3D"79bc39d49f3a">Performance improvements for high-volume opera=
+tions</p></li>
+</ul>
+<p local-id=3D"5b12a7873c1e"><strong>Related Jira Tickets:</strong></p>
+<ul local-id=3D"0817e8bfe6c8">
+<li local-id=3D"33ac3008860d">
+<p local-id=3D"37de4b1d76fe"><span class=3D"confluence-jim-macro jira-issue=
+" data-jira-key=3D"NKP-9"> <a href=3D"https://medzah-team.atlassian.net/bro=
+wse/NKP-9" class=3D"jira-issue-key"><img class=3D"icon" src=3D"https://medz=
+ah-team.atlassian.net/images/icons/issuetypes/epic.svg">NKP-9</a> - <span c=
+lass=3D"summary">ProxyIQ scalability (schema segregation) + daily HL7/FHIR =
+ingest + manual ops flow</span> <span class=3D"aui-lozenge aui-lozenge-subt=
+le aui-lozenge-current jira-macro-single-issue-export-pdf">In Progress</spa=
+n> </span></p></li>
+</ul>
+<p local-id=3D"ab60bc71342f"></p>
+<hr local-id=3D"bfb7f2ec0372">
+<h2 local-id=3D"d3dab3b1d459" id=3D"BusinessRequirements&amp;Tracking-MakeA=
+ssessmentSectionEditable">Make Assessment Section Editable</h2>
+<p local-id=3D"c94550762cb6"><strong>Business Need:</strong> Vendors need a=
+bility to scan items and modify assessment section after initial confirmati=
+on, just like the Delivery section</p>
+<p local-id=3D"4ef467b11b7e"><strong>Current State:</strong></p>
+<ul local-id=3D"bbebe34430b2">
+<li local-id=3D"9db474e1def3">
+<p local-id=3D"4ec387a224f1">Detail of product ordered populates in Assessm=
+ent</p></li>
+<li local-id=3D"eb4efe9af8d1">
+<p local-id=3D"66a0970ee237">Can modify to add other items</p></li>
+<li local-id=3D"598e97ae5d82">
+<p local-id=3D"008d53763a87">Once confirmed, can't return to this section</=
+p></li>
+<li local-id=3D"c80d1ba02d32">
+<p local-id=3D"b47b986af1b8">Can't download encounter at this point</p></li=
+>
+</ul>
+<p local-id=3D"bca137d3ea1a"><strong>Expected Outcome:</strong></p>
+<ul local-id=3D"b1ed84f92b15">
+<li local-id=3D"89db1ad42095">
+<p local-id=3D"4664234ccad5">Assessment section works like Delivery section=
+</p></li>
+<li local-id=3D"59a78f37f722">
+<p local-id=3D"6af72abb74f7">Vendors can scan items and modify after confir=
+mation</p></li>
+<li local-id=3D"b3099d1d7d0d">
+<p local-id=3D"37d3d0291d8c">Full flexibility to add/edit/delete items</p><=
+/li>
+<li local-id=3D"c743884ad957">
+<p local-id=3D"16ae2454eb03">Download encounter from Assessment section</p>=
+</li>
+</ul>
+<p local-id=3D"c856775b29fc"><strong>What We're Building:</strong></p>
+<ul local-id=3D"579af592a7e4">
+<li local-id=3D"11fc327013d6">
+<p local-id=3D"41323323e6be">Scanning capability in Assessment (like Delive=
+ry section)</p></li>
+<li local-id=3D"48b9c9d11338">
+<p local-id=3D"81055cd46f4a">Tabs for Lot and Non-Lot items</p></li>
+<li local-id=3D"440736f0b894">
+<p local-id=3D"51ccd262efac">Non-Lot items support bundles (1 HCPCS entered=
+ =E2=86=92 auto-populates 5 items)</p></li>
+<li local-id=3D"658aa45df23d">
+<p local-id=3D"28a5c8879e25">Ability to add/delete line items</p></li>
+<li local-id=3D"b48c544f9518">
+<p local-id=3D"87b7515796c6">Return to section to modify after confirmation=
+</p></li>
+<li local-id=3D"a717163b5228">
+<p local-id=3D"b5c7d1f88644">Timestamp first confirmation</p></li>
+<li local-id=3D"5fe254c3581b">
+<p local-id=3D"d201282902f5">Track all edits with audit trail</p></li>
+<li local-id=3D"6ef686bc32ef">
+<p local-id=3D"c17370907cb7">Download encounter from Assessment section</p>=
+</li>
+</ul>
+<p local-id=3D"c73665865952"><strong>Acceptance Criteria:</strong></p>
+<ul local-id=3D"deeb140ab2eb">
+<li local-id=3D"886ad0fa34d7">
+<p local-id=3D"827b2b2d25a0">[ ] Can scan items in Assessment section</p></=
+li>
+<li local-id=3D"fdb1930d5d53">
+<p local-id=3D"e5b957425ded">[ ] Lot and Non-Lot tabs functional</p></li>
+<li local-id=3D"ee2b3e07d94f">
+<p local-id=3D"0851b5eab255">[ ] Bundle auto-population works for Non-Lot i=
+tems</p></li>
+<li local-id=3D"7b6f47e23057">
+<p local-id=3D"4ed3b2483d40">[ ] Add/delete line items works</p></li>
+<li local-id=3D"b1f17a250ba1">
+<p local-id=3D"a990095640e5">[ ] Can return to edit after first confirmatio=
+n</p></li>
+<li local-id=3D"e49c95e99629">
+<p local-id=3D"f292ade3562f">[ ] First confirmation timestamped</p></li>
+<li local-id=3D"95dd1c6329cd">
+<p local-id=3D"f3c0a624260b">[ ] Edit history tracked</p></li>
+<li local-id=3D"4a69dafbe645">
+<p local-id=3D"6fcb14865fd9">[ ] Encounter download available from Assessme=
+nt</p></li>
+</ul>
+<p local-id=3D"10b68ffad1da"><strong>Related Jira Tickets:</strong></p>
+<ul local-id=3D"3ad9b8528551">
+<li local-id=3D"a30323bdb704">
+<p local-id=3D"279a116ded0d"><span class=3D"confluence-jim-macro jira-issue=
+" data-jira-key=3D"NKP-20"> <a href=3D"https://medzah-team.atlassian.net/br=
+owse/NKP-20" class=3D"jira-issue-key"><img class=3D"icon" src=3D"https://me=
+dzah-team.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/ava=
+tar/10300?size=3Dmedium">NKP-20</a> - <span class=3D"summary">Assessment Se=
+ction: Make Assessment Section Editable</span> <span class=3D"aui-lozenge a=
+ui-lozenge-subtle aui-lozenge-complete jira-macro-single-issue-export-pdf">=
+Selected for Development</span> </span></p></li>
+</ul>
+<p local-id=3D"17b5ba738397"></p>
+<hr local-id=3D"287569fd6cdb">
+<h2 local-id=3D"e088efbefe09" id=3D"BusinessRequirements&amp;Tracking-Updat=
+eDeliverySectiontoMatchAssessment">Update Delivery Section to Match Assessm=
+ent</h2>
+<p local-id=3D"97d9f440c312"><strong>Business Need:</strong> Delivery secti=
+on needs same updated functionality as Assessment section for consistency</=
+p>
+<p local-id=3D"0acd07f44951"><strong>Current State:</strong></p>
+<ul local-id=3D"32631a47bdc7">
+<li local-id=3D"c9eafd40b04a">
+<p local-id=3D"c45fdfa13f58">Lot items are scanned or manually entered (pul=
+ls from inventory database)</p></li>
+<li local-id=3D"3f6cdd588eeb">
+<p local-id=3D"2fcbfa22f60f">Once lot item is scanned, assigns HCPCS and Me=
+dicare fee</p></li>
+<li local-id=3D"b70b71b0b6e5">
+<p local-id=3D"0c4717074235">No ability to enter Non-Lot items (HCPCS only)=
+</p></li>
+<li local-id=3D"80dc0db02424">
+<p local-id=3D"553891af8a36">Can add items via plus sign</p></li>
+</ul>
+<p local-id=3D"d3ab0292cc79"><strong>Expected Outcome:</strong></p>
+<ul local-id=3D"0c1277b6c934">
+<li local-id=3D"3ac5cfec7c3a">
+<p local-id=3D"2a5b763816e0">Delivery section has same capabilities as upda=
+ted Assessment section</p></li>
+<li local-id=3D"5be95c4d1fc9">
+<p local-id=3D"9fc73ca4f1f0">Consistent user experience between both sectio=
+ns</p></li>
+</ul>
+<p local-id=3D"b85c124a251f"><strong>What We're Building:</strong></p>
+<ul local-id=3D"e793ff51b6c4">
+<li local-id=3D"9de2b55cc138">
+<p local-id=3D"90dbcbd9edc9">Lot and Non-Lot sections (matching Assessment)=
+</p></li>
+<li local-id=3D"35d3f6fb5684">
+<p local-id=3D"8c0c5c95fb8e">Ability to add/delete line items in both secti=
+ons</p></li>
+<li local-id=3D"70f68a4c61c0">
+<p local-id=3D"c154231b9a68">Consistent UX and functionality</p></li>
+</ul>
+<p local-id=3D"fb75ea0a3bb0"><strong>Acceptance Criteria:</strong></p>
+<ul local-id=3D"82b36d2abe4d">
+<li local-id=3D"c405aa66e8a3">
+<p local-id=3D"ff0a8641bfc7">[ ] Lot and Non-Lot sections both present</p><=
+/li>
+<li local-id=3D"452f00f34cb2">
+<p local-id=3D"210517a2d838">[ ] Add/delete works for both item types</p></=
+li>
+<li local-id=3D"7aecf0798e4f">
+<p local-id=3D"fd31303ecea9">[ ] UX matches Assessment section</p></li>
+<li local-id=3D"c6dfa236f07c">
+<p local-id=3D"d53e332b75a8">[ ] All functionality consistent between secti=
+ons</p></li>
+</ul>
+<p local-id=3D"2491cac0b48b"><strong>Related Jira Tickets:</strong></p>
+<ul local-id=3D"90228aff08d0">
+<li local-id=3D"3907531f54a6">
+<p local-id=3D"098ac237af9c"><span class=3D"confluence-jim-macro jira-issue=
+" data-jira-key=3D"NKP-21"> <a href=3D"https://medzah-team.atlassian.net/br=
+owse/NKP-21" class=3D"jira-issue-key"><img class=3D"icon" src=3D"https://me=
+dzah-team.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/ava=
+tar/10300?size=3Dmedium">NKP-21</a> - <span class=3D"summary">Delivery Sect=
+ion: Update Delivery Section to match Assessment Section</span> <span class=
+=3D"aui-lozenge aui-lozenge-subtle aui-lozenge-complete jira-macro-single-i=
+ssue-export-pdf">Selected for Development</span> </span></p></li>
+</ul>
+<hr local-id=3D"c11ad5724a9c">
+<h2 local-id=3D"4a9552bdf8ce" id=3D"BusinessRequirements&amp;Tracking-AddNe=
+wInventoryItemModal">Add New Inventory Item Modal</h2>
+<p local-id=3D"bcf75e3e12ee"><strong>Business Need:</strong> Users need abi=
+lity to add new inventory items without leaving their current workflow</p>
+<p local-id=3D"b1455d9974fd"><strong>Expected Outcome:</strong></p>
+<ul local-id=3D"f8d96985f279">
+<li local-id=3D"02a98b98f780">
+<p local-id=3D"ae456dcdc8d9">Quick way to add inventory items inline</p></l=
+i>
+<li local-id=3D"a0c9ecedc9d0">
+<p local-id=3D"d7322cdec344">Support for both Lot and Non-Lot items</p></li=
+>
+<li local-id=3D"e55d2614fd5f">
+<p local-id=3D"8eeedee5869f">Saves directly to inventory database</p></li>
+</ul>
+<p local-id=3D"52b13b6a1594"><strong>What We're Building:</strong></p>
+<ul local-id=3D"58ec00141eb2">
+<li local-id=3D"808e555d84cc">
+<p local-id=3D"6e33d09a0917">"Add New Item" button in inventory management<=
+/p></li>
+<li local-id=3D"8c845a5c8df6">
+<p local-id=3D"63fb792c5b81">Modal window opens on click</p></li>
+<li local-id=3D"3115791fed7e">
+<p local-id=3D"c1a1771a25c8">Form to add either Lot or Non-Lot items</p></l=
+i>
+<li local-id=3D"a6c54ef49b7f">
+<p local-id=3D"23f6d04454d8">Saves to inventory database</p></li>
+<li local-id=3D"78d290aeae0c">
+<p local-id=3D"b2b66cc2a26d">Modal closes, new item immediately available</=
+p></li>
+</ul>
+<p local-id=3D"153670e4560c"><strong>Acceptance Criteria:</strong></p>
+<ul local-id=3D"58ac49c4c5f1">
+<li local-id=3D"a13a922b7b15">
+<p local-id=3D"301a161963ae">[ ] "Add New Item" button visible and function=
+al</p></li>
+<li local-id=3D"a22e3a7cd6b8">
+<p local-id=3D"9a7a37f55468">[ ] Modal opens with form fields</p></li>
+<li local-id=3D"4c861c9151a8">
+<p local-id=3D"43dc32464dd4">[ ] Can select Lot or Non-Lot item type</p></l=
+i>
+<li local-id=3D"0f03bb9c402d">
+<p local-id=3D"253ef3f0cf14">[ ] All required fields present</p></li>
+<li local-id=3D"600e1c2a5f20">
+<p local-id=3D"fd1f9619494a">[ ] Saves to inventory database</p></li>
+<li local-id=3D"c88c3fdacc7d">
+<p local-id=3D"dfb5aeca3251">[ ] New item immediately available in dropdown=
+s</p></li>
+<li local-id=3D"978327946d3a">
+<p local-id=3D"e7362f5e9d36">[ ] Modal closes after successful save</p></li=
+>
+</ul>
+<p local-id=3D"78b3529cf700"><strong>Related Jira Tickets:</strong></p>
+<ul local-id=3D"457feef158fe">
+<li local-id=3D"720e2f80426e">
+<p local-id=3D"c0e909fc6bf8"><span class=3D"confluence-jim-macro jira-issue=
+" data-jira-key=3D"NKP-19"> <a href=3D"https://medzah-team.atlassian.net/br=
+owse/NKP-19" class=3D"jira-issue-key"><img class=3D"icon" src=3D"https://me=
+dzah-team.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/ava=
+tar/10300?size=3Dmedium">NKP-19</a> - <span class=3D"summary">Create Add ne=
+w items modal Inventory Screen</span> <span class=3D"aui-lozenge aui-lozeng=
+e-subtle aui-lozenge-complete jira-macro-single-issue-export-pdf">Selected =
+for Development</span> </span></p></li>
+</ul>
+<hr local-id=3D"00146583a521">
+<h2 local-id=3D"fe912122643b" id=3D"BusinessRequirements&amp;Tracking-Datab=
+aseIsolationImplementation">Database Isolation Implementation</h2>
+<p local-id=3D"6dcd52fe6ad7"><strong>Business Need:</strong> Ensure data is=
+olation between different hospital networks for security, compliance, and p=
+erformance</p>
+<p local-id=3D"8cfe1f941338"><strong>Current State:</strong></p>
+<ul local-id=3D"a3842f40e1a6">
+<li local-id=3D"3955549f117f">
+<p local-id=3D"9c34d157c31b">Single database schema shared across all clien=
+ts</p></li>
+<li local-id=3D"23899bfacf4c">
+<p local-id=3D"6e3231c994aa">Potential data leakage risk between providers<=
+/p></li>
+<li local-id=3D"d704834cff65">
+<p local-id=3D"520fb3650cc9">Performance degradation as data volume grows</=
+p></li>
+<li local-id=3D"ba2e6cf55a2d">
+<p local-id=3D"5dd75f1bd333">Difficult to provide per-tenant SLAs</p></li>
+</ul>
+<p local-id=3D"a0a0fd36c8d9"><strong>Expected Outcome:</strong></p>
+<ul local-id=3D"782f4cd00bc0">
+<li local-id=3D"0bcb9e9690fa">
+<p local-id=3D"25f62a928cfb">Each provider has isolated data in separate sc=
+hema/partition</p></li>
+<li local-id=3D"ff2169606975">
+<p local-id=3D"6c8e73d85942">No cross-tenant data access possible</p></li>
+<li local-id=3D"c470c19bdef4">
+<p local-id=3D"0c41225b87bb">Improved query performance with smaller data s=
+ets per tenant</p></li>
+<li local-id=3D"bbcd4a58bedc">
+<p local-id=3D"b7bce2b31dc7">Ability to offer provider-specific SLAs</p></l=
+i>
+<li local-id=3D"4555c1d3eaa0">
+<p local-id=3D"8c55e11943d7">Easier compliance auditing (HIPAA per-tenant)<=
+/p></li>
+</ul>
+<p local-id=3D"f42b71ebcaf2"><strong>What We're Building:</strong></p>
+<ul local-id=3D"dfe3fb98f9f5">
+<li local-id=3D"da194fea1976">
+<p local-id=3D"8072a724d552">Multi-tenant database architecture with schema=
+ segregation</p></li>
+<li local-id=3D"7e0c5ad3cefd">
+<p local-id=3D"6c5b5cbc275c">Tenant-specific data partitioning in DynamoDB<=
+/p></li>
+<li local-id=3D"86f6247ccf43">
+<p local-id=3D"b8286b322ad8">Row-level security enforcement</p></li>
+<li local-id=3D"dd157d58856d">
+<p local-id=3D"e4b07b6d3da3">Tenant context validation in all API calls</p>=
+</li>
+<li local-id=3D"bf30b1dceec5">
+<p local-id=3D"b4ed69f5355a">Data migration scripts to move existing data i=
+nto isolated schemas</p></li>
+<li local-id=3D"a7017fcaa5dd">
+<p local-id=3D"9ca75d3cb740">Admin tools to manage tenant schemas</p></li>
+</ul>
+<p local-id=3D"ead993c42a5a"><strong>Technical Approach:</strong></p>
+<ul local-id=3D"7d37245ed9fd">
+<li local-id=3D"c2d0b0c29a1c">
+<p local-id=3D"179dbbfab62a">Implement tenant ID prefix in DynamoDB partiti=
+on keys</p></li>
+<li local-id=3D"5e8fd8ee0abb">
+<p local-id=3D"d73a46f405e7">Lambda authorizer validates tenant context on =
+every request</p></li>
+<li local-id=3D"f1546805392c">
+<p local-id=3D"72041f918f91">Cognito user pools include tenant metadata</p>=
+</li>
+<li local-id=3D"42284c44bb0e">
+<p local-id=3D"2403a1c415e5">GraphQL resolvers filter by tenant ID automati=
+cally</p></li>
+<li local-id=3D"fb74a548aec4">
+<p local-id=3D"4b963080241e">Separate S3 prefixes per tenant for file stora=
+ge</p></li>
+</ul>
+<p local-id=3D"251d006fce30"><strong>Acceptance Criteria:</strong></p>
+<ul local-id=3D"bc39d46fd832">
+<li local-id=3D"654ccbc1d3ae">
+<p local-id=3D"b6431fffc57e">[ ] Each provider has isolated database schema=
+</p></li>
+<li local-id=3D"cfebe3c010ab">
+<p local-id=3D"750b655f71b5">[ ] No cross-tenant queries possible (enforced=
+ at code level)</p></li>
+<li local-id=3D"c1bc541ed64c">
+<p local-id=3D"09b5231b7a50">[ ] Tenant ID automatically injected into all =
+queries</p></li>
+<li local-id=3D"0d0e1dc4fa60">
+<p local-id=3D"964d03789354">[ ] Data migration completed for existing tena=
+nts</p></li>
+<li local-id=3D"3e3a896dd0a6">
+<p local-id=3D"6d628122f32f">[ ] Performance benchmarks show improved query=
+ times</p></li>
+<li local-id=3D"5405713f271c">
+<p local-id=3D"f982d5089e53">[ ] Security audit confirms zero cross-tenant =
+access</p></li>
+<li local-id=3D"d22a03d42937">
+<p local-id=3D"10fdd0c87242">[ ] Admin dashboard shows per-tenant data stat=
+istics</p></li>
+<li local-id=3D"d710d9d601a8">
+<p local-id=3D"20568decb1f5">[ ] Rollback plan documented and tested</p></l=
+i>
+</ul>
+<p local-id=3D"b6a3121ae3fa"><strong>Related Jira Tickets:</strong></p>
+<ul local-id=3D"e9b528f54eb5">
+<li local-id=3D"0f01ec17c6d3">
+<p local-id=3D"ae7f9bef9ec9"><span class=3D"confluence-jim-macro jira-issue=
+" data-jira-key=3D"NKP-25"> <a href=3D"https://medzah-team.atlassian.net/br=
+owse/NKP-25" class=3D"jira-issue-key"><img class=3D"icon" src=3D"https://me=
+dzah-team.atlassian.net/images/icons/issuetypes/epic.svg">NKP-25</a> - <spa=
+n class=3D"summary">Database Isolation Implementation</span> <span class=3D=
+"aui-lozenge aui-lozenge-subtle aui-lozenge-complete jira-macro-single-issu=
+e-export-pdf">Backlog</span> </span></p></li>
+</ul>
+<p local-id=3D"5f7fde692f94"></p>
+<hr local-id=3D"c146c8d64a1a">
+<h2 local-id=3D"f53885721978" id=3D"BusinessRequirements&amp;Tracking-Infra=
+structureSetup&amp;Optimization">Infrastructure Setup &amp; Optimization</h=
+2>
+<p local-id=3D"2b9520f0cc20"><strong>Business Need:</strong> Establish robu=
+st, scalable, and cost-effective cloud infrastructure to support ProxyIQ gr=
+owth and ensure reliability</p>
+<p local-id=3D"c29d931f3107"><strong>Current State:</strong></p>
+<ul local-id=3D"fe0d02b31ebc">
+<li local-id=3D"bb6b244f088f">
+<p local-id=3D"4da64bd1a948">Infrastructure provisioned manually (error-pro=
+ne)</p></li>
+<li local-id=3D"1733d070bf83">
+<p local-id=3D"c782f04daccf">No infrastructure-as-code (hard to replicate e=
+nvironments)</p></li>
+<li local-id=3D"b22da25e87e6">
+<p local-id=3D"e8e854f5bab5">Limited monitoring and alerting</p></li>
+<li local-id=3D"adf63bd97736">
+<p local-id=3D"05f74654e698">No disaster recovery plan</p></li>
+<li local-id=3D"fc3834c5be75">
+<p local-id=3D"becb75d794fc">Dev/Staging/Prod environments inconsistent</p>=
+</li>
+</ul>
+<p local-id=3D"b78aeeedde4c"><strong>Expected Outcome:</strong></p>
+<ul local-id=3D"a093955caf89">
+<li local-id=3D"0b47823cdb87">
+<p local-id=3D"12a01e06712a">Fully automated infrastructure provisioning</p=
+></li>
+<li local-id=3D"4e3c7882342d">
+<p local-id=3D"9ff68e7acb68">Consistent environments across Dev/Staging/Pro=
+d</p></li>
+<li local-id=3D"7997c52cc739">
+<p local-id=3D"fb2249afbeef">Comprehensive monitoring and alerting</p></li>
+<li local-id=3D"9b474586da1e">
+<p local-id=3D"3715b5aae7d4">Disaster recovery and backup strategy in place=
+</p></li>
+<li local-id=3D"5dab223b0a0c">
+<p local-id=3D"43d8501d2ec0">Cost optimization implemented</p></li>
+<li local-id=3D"4217db9e7563">
+<p local-id=3D"28ebb3d857cd">Security hardening complete</p></li>
+</ul>
+<p local-id=3D"92f590a63326"><strong>Acceptance Criteria:</strong></p>
+<ul local-id=3D"18e828a05235">
+<li local-id=3D"50c745074c25">
+<p local-id=3D"0a39d61595d5">[ ] Infrastructure fully defined in Terraform/=
+CDK</p></li>
+<li local-id=3D"4d41eb0ef6c5">
+<p local-id=3D"ee5936ae1869">[ ] One-command deployment to any environment<=
+/p></li>
+<li local-id=3D"b24eb3cf60ef">
+<p local-id=3D"5bb5ccea3bda">[ ] Dev/Staging/Prod environments identical</p=
+></li>
+<li local-id=3D"86cf2886e3e6">
+<p local-id=3D"18d17ff93aa4">[ ] Monitoring dashboards operational</p></li>
+<li local-id=3D"7068b1fe812e">
+<p local-id=3D"612c361e2a3f">[ ] Alerts configured and tested</p></li>
+<li local-id=3D"67d8ad16783d">
+<p local-id=3D"3cf4098f8382">[ ] DR plan documented and tested</p></li>
+<li local-id=3D"fb48352aa18f">
+<p local-id=3D"380c0239b184">[ ] Security scan passes (no critical vulnerab=
+ilities)</p></li>
+<li local-id=3D"11417166f34c">
+<p local-id=3D"82f33010efe6">[ ] Cost optimization recommendations implemen=
+ted</p></li>
+<li local-id=3D"82e70f399508">
+<p local-id=3D"d6d0e4015658">[ ] CI/CD pipeline fully automated</p></li>
+<li local-id=3D"f20669605d74">
+<p local-id=3D"5e772398e9d3">[ ] Zero manual infrastructure changes</p></li=
+>
+</ul>
+<p local-id=3D"65214f157527"><strong>Related Jira Tickets:</strong></p>
+<ul local-id=3D"1eee843ed5f6">
+<li local-id=3D"4101937bdfaa">
+<p local-id=3D"3324e6bd9dc1"><span class=3D"confluence-jim-macro jira-issue=
+" data-jira-key=3D"NKP-26"> <a href=3D"https://medzah-team.atlassian.net/br=
+owse/NKP-26" class=3D"jira-issue-key"><img class=3D"icon" src=3D"https://me=
+dzah-team.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/ava=
+tar/10300?size=3Dmedium">NKP-26</a> - <span class=3D"summary">Infrastructur=
+e Setup </span> <span class=3D"aui-lozenge aui-lozenge-subtle aui-lozenge-c=
+urrent jira-macro-single-issue-export-pdf">Planning</span> </span></p></li>
+</ul>
+<hr local-id=3D"f26dd655-4428-46a9-bb74-29541f9bc382">
+    </div>
+</body>
+</html>
+------=_Part_0_298238905.1776352584680--

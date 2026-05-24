@@ -19,7 +19,7 @@
     "bcryptjs": "^2.4.3",
     "bwip-js": "^4.10.1",
     "dayjs": "^1.11.0",
-    "drizzle-orm": "^0.36.0",
+    "drizzle-orm": "^0.38.0",
     "exceljs": "^4.4.0",
     "hono": "^4.6.0",
     "jose": "^5.9.0",

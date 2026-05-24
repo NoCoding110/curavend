@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
 import { relations, sql } from "drizzle-orm";
 import { orders } from "./orders";
 
@@ -12,6 +12,11 @@ export const orderItems = sqliteTable(
     code: text("code"), // HCPC code
     quantity: integer("quantity"),
     description: text("description"),
+    // Resolved unit price (USD) for this line. Populated at order create from
+    // the 4-tier pricing cascade (CONTRACT → FEE_SCHEDULE → MEDICARE → MANUAL).
+    // Nullable because MANUAL items are vendor-priced at invoice time.
+    unitPrice: real("unit_price"),
+    spend: real("spend"),
     modified: integer("modified").default(0),
     // Where the unit_price came from. CONTRACT (active contract item) >
     // FEE_SCHEDULE (customFeeSchedule for the hospital-vendor pair) >

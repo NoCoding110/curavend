@@ -6,6 +6,7 @@ import MainLayout from '../layouts/MainLayout';
 import FullPageLayout from '../layouts/FullPageLayout';
 
 // Lazy-loaded pages
+const Landing = lazy(() => import('../features/landing/pages/Landing'));
 const Login = lazy(() => import('../features/auth/pages/Login'));
 const LabDashboard = lazy(() => import('../features/labs/pages/LabDashboard'));
 const LabOrders = lazy(() => import('../features/labs/pages/LabOrders'));
@@ -14,6 +15,49 @@ const LabOrderDetail = lazy(() => import('../features/labs/pages/LabOrderDetail'
 const LabGroupsPage = lazy(() => import('../features/labs/pages/LabGroups'));
 const LabKitSitesPage = lazy(() => import('../features/labs/pages/LabKitSites'));
 const WorkflowsAdmin = lazy(() => import('../features/admin/pages/WorkflowsAdmin'));
+const GpoContracts = lazy(() => import('../features/admin/pages/GpoContracts'));
+const PayorsPage = lazy(() => import('../features/admin/pages/Payors'));
+const ForecastPage = lazy(() => import('../features/reporting/pages/Forecast'));
+const PriorAuthsPage = lazy(() => import('../features/priorAuth/pages/PriorAuths'));
+const EhrConnectionsPage = lazy(() => import('../features/admin/pages/EhrConnections'));
+const FormularyPage = lazy(() => import('../features/admin/pages/Formulary'));
+const RequisitionsPage = lazy(() => import('../features/requisitions/pages/Requisitions'));
+const ApprovalRulesPage = lazy(() => import('../features/requisitions/pages/ApprovalRules'));
+const RequisitionTemplatesPage = lazy(() => import('../features/requisitions/pages/RequisitionTemplates'));
+const GoodsReceiptsPage = lazy(() => import('../features/receiving/pages/GoodsReceipts'));
+const MatchExceptionsPage = lazy(() => import('../features/receiving/pages/MatchExceptions'));
+const MultiSiteSpendPage = lazy(() => import('../features/reporting/pages/MultiSiteSpend'));
+const ContractLeakagePage = lazy(() => import('../features/reporting/pages/ContractLeakage'));
+const HelpCenterPage = lazy(() => import('../features/helpCenter/pages/HelpCenter'));
+const CreateDmeOrderPage = lazy(() => import('../features/supplyOrderDetail/pages/CreateDmeOrder'));
+const LcdIngestPage = lazy(() => import('../features/admin/pages/LcdIngest'));
+const DmeposCompliancePage = lazy(() => import('../features/admin/pages/DmeposCompliance'));
+const LabInventoryPage = lazy(() => import('../features/labs/pages/LabInventory'));
+const TestConsumableMapPage = lazy(() => import('../features/labs/pages/TestConsumableMap'));
+const LabAuditLogPage = lazy(() => import('../features/labs/pages/LabAuditLog'));
+const LabBackfillPage = lazy(() => import('../features/admin/pages/LabBackfill'));
+const BudgetsPage = lazy(() => import('../features/admin/pages/Budgets'));
+const DepartmentSpendPage = lazy(() => import('../features/reporting/pages/DepartmentSpend'));
+const PurchaseOrderDetailPage = lazy(() => import('../features/purchaseOrders/pages/PurchaseOrderDetail'));
+const GlLedgerPage = lazy(() => import('../features/admin/pages/GlLedger'));
+const SupplierOnboardingPage = lazy(() => import('../features/admin/pages/SupplierOnboarding'));
+const ComplianceDashboardPage = lazy(() => import('../features/admin/pages/ComplianceDashboard'));
+const ItemMasterHygienePage = lazy(() => import('../features/admin/pages/ItemMasterHygiene'));
+const InvoiceMatchRulesPage = lazy(() => import('../features/admin/pages/InvoiceMatchRules'));
+const RmasPage = lazy(() => import('../features/receiving/pages/Rmas'));
+const BackorderTriagePage = lazy(() => import('../features/receiving/pages/BackorderTriage'));
+const PointOfUsePage = lazy(() => import('../features/inventory/pages/PointOfUse'));
+const LogisticsPage = lazy(() => import('../features/logistics/pages/Logistics'));
+const CrossSiteInventoryPage = lazy(() => import('../features/reporting/pages/CrossSiteInventory'));
+const EmergencyReviewQueuePage = lazy(() => import('../features/admin/pages/EmergencyReviewQueue'));
+const InventoryTransfersPage = lazy(() => import('../features/inventory/pages/InventoryTransfers'));
+const RecallsPage = lazy(() => import('../features/admin/pages/Recalls'));
+const ControlledSubstancePage = lazy(() => import('../features/admin/pages/ControlledSubstance'));
+const VendorScorecardsPage = lazy(() => import('../features/reporting/pages/VendorScorecards'));
+const HospitalForecastPage = lazy(() => import('../features/reporting/pages/HospitalForecast'));
+const ChargeCaptureLeakagePage = lazy(() => import('../features/reporting/pages/ChargeCaptureLeakage'));
+const PriceVariancePage = lazy(() => import('../features/reporting/pages/PriceVariance'));
+const ClinicalConsumptionPage = lazy(() => import('../features/reporting/pages/ClinicalConsumption'));
 const ForgotPassword = lazy(
   () => import('../features/auth/pages/ForgotPassword'),
 );
@@ -128,7 +172,10 @@ const AllRoutes: React.FC = () => {
   return (
     <Suspense fallback={<Loading />}>
       <Routes>
-        {/* Public routes */}
+        {/* Public landing page — replaces the old "/" → Dashboard mapping. */}
+        <Route path="/" element={<Landing />} />
+
+        {/* Public auth routes */}
         <Route element={<FullPageLayout />}>
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -143,7 +190,7 @@ const AllRoutes: React.FC = () => {
             </PrivateRoute>
           }
         >
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/setting" element={<Setting />} />
           <Route path="/provider-orders" element={<SupplyOrder />} />
@@ -222,6 +269,49 @@ const AllRoutes: React.FC = () => {
           <Route path="/labs/groups" element={<LabGroupsPage />} />
           <Route path="/labs/kit-sites" element={<LabKitSitesPage />} />
           <Route path="/admin/workflows" element={<WorkflowsAdmin />} />
+          <Route path="/admin/gpo-contracts" element={<GpoContracts />} />
+          <Route path="/admin/payors" element={<PayorsPage />} />
+          <Route path="/reporting/forecast" element={<ForecastPage />} />
+          <Route path="/prior-auths" element={<PriorAuthsPage />} />
+          <Route path="/admin/ehr-connections" element={<EhrConnectionsPage />} />
+          <Route path="/admin/formulary" element={<FormularyPage />} />
+          <Route path="/requisitions" element={<RequisitionsPage />} />
+          <Route path="/requisition-templates" element={<RequisitionTemplatesPage />} />
+          <Route path="/admin/approval-rules" element={<ApprovalRulesPage />} />
+          <Route path="/goods-receipts" element={<GoodsReceiptsPage />} />
+          <Route path="/match-exceptions" element={<MatchExceptionsPage />} />
+          <Route path="/reporting/multi-site-spend" element={<MultiSiteSpendPage />} />
+          <Route path="/reporting/contract-leakage" element={<ContractLeakagePage />} />
+          <Route path="/help-center" element={<HelpCenterPage />} />
+          <Route path="/create-dme-order" element={<CreateDmeOrderPage />} />
+          <Route path="/admin/lcd-ingest" element={<LcdIngestPage />} />
+          <Route path="/admin/dmepos-compliance" element={<DmeposCompliancePage />} />
+          <Route path="/labs/inventory" element={<LabInventoryPage />} />
+          <Route path="/labs/test-mappings" element={<TestConsumableMapPage />} />
+          <Route path="/labs/audit" element={<LabAuditLogPage />} />
+          <Route path="/admin/lab-backfill" element={<LabBackfillPage />} />
+          <Route path="/admin/budgets" element={<BudgetsPage />} />
+          <Route path="/reporting/department-spend" element={<DepartmentSpendPage />} />
+          <Route path="/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+          <Route path="/admin/gl-ledger" element={<GlLedgerPage />} />
+          <Route path="/admin/supplier-onboarding" element={<SupplierOnboardingPage />} />
+          <Route path="/admin/compliance-dashboard" element={<ComplianceDashboardPage />} />
+          <Route path="/admin/item-master-hygiene" element={<ItemMasterHygienePage />} />
+          <Route path="/admin/invoice-match-rules" element={<InvoiceMatchRulesPage />} />
+          <Route path="/rmas" element={<RmasPage />} />
+          <Route path="/backorders/triage" element={<BackorderTriagePage />} />
+          <Route path="/point-of-use" element={<PointOfUsePage />} />
+          <Route path="/logistics" element={<LogisticsPage />} />
+          <Route path="/reporting/cross-site-inventory" element={<CrossSiteInventoryPage />} />
+          <Route path="/admin/emergency-review" element={<EmergencyReviewQueuePage />} />
+          <Route path="/admin/recalls" element={<RecallsPage />} />
+          <Route path="/admin/controlled-substance" element={<ControlledSubstancePage />} />
+          <Route path="/inventory-transfers" element={<InventoryTransfersPage />} />
+          <Route path="/reporting/vendor-scorecards" element={<VendorScorecardsPage />} />
+          <Route path="/reporting/hospital-forecast" element={<HospitalForecastPage />} />
+          <Route path="/reporting/charge-capture-leakage" element={<ChargeCaptureLeakagePage />} />
+          <Route path="/reporting/price-variance" element={<PriceVariancePage />} />
+          <Route path="/reporting/clinical-consumption" element={<ClinicalConsumptionPage />} />
         </Route>
 
         {/* Catch-all */}

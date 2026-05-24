@@ -36,6 +36,9 @@ import styled from 'styled-components';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { usersApi } from '../../../api/users';
+import { GroupManagement } from '../components/GroupManagement';
+import { userGroupsApi, type UserGroup } from '../../../api/userGroups';
+import { get as apiGet } from '../../../api/client';
 import { useResizableColumns } from '../../../components/table/useResizableColumns';
 
 const { Title, Text } = Typography;
@@ -151,6 +154,27 @@ const Setting: React.FC = () => {
   // ── Drawer state ─────────────────────────────────────────────
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
+  const [availableGroups, setAvailableGroups] = useState<UserGroup[]>([]);
+  const [, setGroupsLoaded] = useState(false);
+
+  // Load groups once when the page mounts so the user-create drawer can populate its multi-select instantly.
+  useEffect(() => {
+    let cancelled = false;
+    userGroupsApi
+      .list()
+      .then((res) => {
+        if (cancelled) return;
+        setAvailableGroups(res.items ?? []);
+        setGroupsLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setGroupsLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [userForm] = Form.useForm();
 
@@ -229,15 +253,23 @@ const Setting: React.FC = () => {
     setDrawerOpen(true);
   };
 
-  const openEditDrawer = (user: UserRecord) => {
+  const openEditDrawer = async (user: UserRecord) => {
     setEditingUser(user);
     userForm.setFieldsValue({
       name: user.name,
       email: user.email,
       role: user.role,
       userType: user.userType,
+      groupIds: [],
     });
     setDrawerOpen(true);
+    // Fetch current group memberships so the multi-select can pre-fill.
+    try {
+      const resp = await apiGet<{ items: Array<{ id: string }> }>(`/users/${user.id}/groups`);
+      userForm.setFieldsValue({ groupIds: (resp.items ?? []).map((g) => g.id) });
+    } catch {
+      // Non-fatal — the user might not be in any group yet.
+    }
   };
 
   const closeDrawer = () => {
@@ -260,6 +292,7 @@ const Setting: React.FC = () => {
           userType: values.userType,
         };
         if (values.password) payload.password = values.password;
+        if (values.groupIds !== undefined) payload.groupIds = values.groupIds;
 
         await usersApi.update(editingUser.id, payload);
         message.success('User updated successfully.');
@@ -271,6 +304,7 @@ const Setting: React.FC = () => {
           password: values.password,
           role: values.role,
           userType: values.userType,
+          ...(values.groupIds?.length ? { groupIds: values.groupIds } : {}),
         });
         message.success('User created successfully.');
       }
@@ -470,6 +504,9 @@ const Setting: React.FC = () => {
           </Spin>
         </SectionCard>
 
+        {/* ── User Groups ────────────────────────────────────── */}
+        <GroupManagement />
+
         {/* ── Notification Settings ──────────────────────────── */}
         <SectionCard
           title={
@@ -650,6 +687,25 @@ const Setting: React.FC = () => {
               ))}
             </Select>
           </Form.Item>
+
+          {availableGroups.length > 0 && (
+            <Form.Item
+              name="groupIds"
+              label="Groups"
+              tooltip="Add this user to one or more groups. They inherit each group's permissions."
+            >
+              <Select
+                mode="multiple"
+                placeholder="Pick one or more groups (optional)"
+                allowClear
+                optionFilterProp="label"
+                options={availableGroups.map((g) => ({
+                  value: g.id,
+                  label: g.isSystemDefault ? `${g.name} (default)` : g.name,
+                }))}
+              />
+            </Form.Item>
+          )}
         </Form>
       </Drawer>
     </PageWrapper>

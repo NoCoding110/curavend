@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Card, Space, Table, Tag, Typography, message, Modal, Form, Input, InputNumber } from 'antd';
-import { DownloadOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Dropdown, Space, Table, Tag, Typography, message, Modal, Form, Input, InputNumber } from 'antd';
+import { DownloadOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
+import { Link } from 'react-router-dom';
 import { get, post } from '../../../api/client';
 import { useResizableColumns } from '../../../components/table/useResizableColumns';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const PageWrapper = styled.div`padding: 24px;`;
 
 const PurchaseOrders: React.FC = () => {
@@ -14,17 +15,84 @@ const PurchaseOrders: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
 
+  const transmit = async (id: string, number: string, method?: string) => {
+    try {
+      const r = await post<{ state: string; method: string; error?: string }>(
+        `/purchase-orders/${id}/transmit`,
+        method ? { method } : {},
+      );
+      if (r.state === 'SENT') {
+        message.success(`PO ${number} sent via ${r.method}`);
+      } else {
+        message.error(`PO ${number} transmission FAILED: ${r.error ?? 'unknown'}`);
+      }
+      load();
+    } catch (err: any) {
+      message.error(err?.response?.data?.error ?? 'Transmit failed');
+    }
+  };
+
   const baseColumns = [
-    { title: 'PO Number', dataIndex: 'number' },
+    {
+      title: 'PO Number',
+      dataIndex: 'number',
+      render: (v: string, r: any) => (
+        <Link to={`/purchase-orders/${r.id}`}><strong>{v}</strong></Link>
+      ),
+    },
     { title: 'Status', dataIndex: 'status', render: (v: any) => <Tag>{v}</Tag> },
+    {
+      title: 'Transmission',
+      dataIndex: 'transmissionState',
+      width: 150,
+      render: (v: any, r: any) => {
+        const color =
+          v === 'ACKED' ? 'green' :
+          v === 'SENT' ? 'blue' :
+          v === 'FAILED' ? 'red' :
+          v === 'SENDING' ? 'gold' : 'default';
+        return (
+          <Space direction="vertical" size={0}>
+            <Tag color={color}>{v ?? 'NOT_SENT'}</Tag>
+            {r.transmissionMethod && <Text type="secondary" style={{ fontSize: 11 }}>via {r.transmissionMethod}</Text>}
+          </Space>
+        );
+      },
+    },
     { title: 'Vendor', dataIndex: 'vendorId' },
+    {
+      title: 'Total',
+      dataIndex: 'totalUsd',
+      align: 'right' as const,
+      width: 100,
+      render: (v: any) => v != null ? `$${Number(v).toLocaleString()}` : '—',
+    },
     { title: 'Date', dataIndex: 'date', render: (v: any) => v ? new Date(v).toLocaleDateString() : '-' },
     {
       title: 'Actions',
       render: (_: any, r: any) => (
-        <Button icon={<DownloadOutlined />} size="small" onClick={() => exportCsv(r.id, r.number)}>
-          Export CSV
-        </Button>
+        <Space size={4}>
+          <Dropdown.Button
+            icon={<SendOutlined />}
+            size="small"
+            onClick={() => transmit(r.id, r.number)}
+            menu={{
+              items: [
+                { key: 'EDI', label: 'Send via EDI 850' },
+                { key: 'API', label: 'Send via API' },
+                { key: 'PUNCHOUT', label: 'Send via cXML PunchOut' },
+                { key: 'EMAIL', label: 'Send via Email' },
+                { key: 'PORTAL', label: 'Mark as Portal-served' },
+              ],
+              onClick: ({ key }) => transmit(r.id, r.number, key),
+            }}
+          >
+            Transmit
+          </Dropdown.Button>
+          <Button icon={<DownloadOutlined />} size="small" onClick={() => exportCsv(r.id, r.number)}>
+            CSV
+          </Button>
+        </Space>
       ),
     },
   ];

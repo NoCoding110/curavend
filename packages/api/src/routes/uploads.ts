@@ -44,11 +44,24 @@ uploadRoutes.post('/', async (c) => {
   }
 
   const formData = await c.req.formData();
-  const file = formData.get('file');
+  const raw = formData.get('file');
 
-  if (!file || !(file instanceof File)) {
+  // Workers FormData returns `string | File | null`. `instanceof File` is the
+  // canonical way to discriminate; cast `File` through `any` because under
+  // @cloudflare/workers-types it's an ambient type that TS doesn't always
+  // know is a value-side constructor.
+  // `raw` is typed `FormDataEntryValue | null` (string | File | null). Use a
+  // duck-type instead of `instanceof File` because the global File constructor
+  // value isn't always visible under @cloudflare/workers-types.
+  if (
+    !raw ||
+    typeof raw === 'string' ||
+    typeof (raw as any).arrayBuffer !== 'function' ||
+    typeof (raw as any).size !== 'number'
+  ) {
     throw new ValidationError('No file provided. Use field name "file".');
   }
+  const file = raw as File;
 
   if (file.size > MAX_FILE_SIZE) {
     throw new ValidationError(

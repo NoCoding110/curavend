@@ -163,6 +163,49 @@ const Dashboard: React.FC = () => {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [summary, setSummary] = useState<SummaryStats>({});
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  // Procurement KPIs (Session 11 integration)
+  const [procurementKpis, setProcurementKpis] = useState<{
+    reqsAwaitingMe: number;
+    matchExceptions7d: number;
+    contractLeakageYtd: number;
+  }>({ reqsAwaitingMe: 0, matchExceptions7d: 0, contractLeakageYtd: 0 });
+  const [procurementLoading, setProcurementLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { get } = await import('../../../api/client');
+        const dayjsMod = await import('dayjs');
+        const dayjs = dayjsMod.default;
+        const sevenDaysAgo = dayjs().subtract(7, 'day').format('YYYY-MM-DD');
+        const ytdStart = dayjs().startOf('year').format('YYYY-MM-DD');
+        const todayEnd = dayjs().format('YYYY-MM-DD');
+        const myId = userData?.id;
+        const [reqs, exc, leak] = await Promise.allSettled([
+          myId
+            ? get<{ items: any[] }>('/requisitions', { approverId: myId, status: 'SUBMITTED' })
+            : Promise.resolve({ items: [] as any[] }),
+          get<{ items: any[] }>('/three-way-match/exceptions'),
+          get<{ totalLeakageUsd: number }>(
+            '/reports/contract-leakage',
+            { startDate: ytdStart, endDate: todayEnd } as any,
+          ).catch(() => ({ totalLeakageUsd: 0 })),
+        ]);
+        if (cancelled) return;
+        setProcurementKpis({
+          reqsAwaitingMe: reqs.status === 'fulfilled' ? reqs.value.items?.length ?? 0 : 0,
+          matchExceptions7d:
+            exc.status === 'fulfilled'
+              ? exc.value.items?.filter((m: any) => m.computedAt && m.computedAt >= sevenDaysAgo).length ?? 0
+              : 0,
+          contractLeakageYtd: leak.status === 'fulfilled' ? leak.value.totalLeakageUsd ?? 0 : 0,
+        });
+      } catch { /* noop */ }
+      finally { if (!cancelled) setProcurementLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [userData?.id]);
 
   const fetchSummary = useCallback(async () => {
     setSummaryLoading(true);
@@ -372,6 +415,49 @@ const Dashboard: React.FC = () => {
               </StatCard>
             </Col>
           ))}
+        </Row>
+
+        {/* Procurement KPIs (Session 11) */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={8}>
+            <StatCard onClick={() => navigate('/requisitions')} style={{ cursor: 'pointer' }}>
+              {procurementLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic
+                  title="Requisitions awaiting my approval"
+                  value={procurementKpis.reqsAwaitingMe}
+                  valueStyle={{ color: procurementKpis.reqsAwaitingMe > 0 ? '#fa8c16' : '#52c41a', fontSize: 26 }}
+                />
+              )}
+            </StatCard>
+          </Col>
+          <Col xs={24} sm={8}>
+            <StatCard onClick={() => navigate('/match-exceptions')} style={{ cursor: 'pointer' }}>
+              {procurementLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic
+                  title="Match exceptions (7d)"
+                  value={procurementKpis.matchExceptions7d}
+                  valueStyle={{ color: procurementKpis.matchExceptions7d > 0 ? '#cf1322' : '#52c41a', fontSize: 26 }}
+                />
+              )}
+            </StatCard>
+          </Col>
+          <Col xs={24} sm={8}>
+            <StatCard onClick={() => navigate('/reporting/contract-leakage')} style={{ cursor: 'pointer' }}>
+              {procurementLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : (
+                <Statistic
+                  title="Contract leakage YTD"
+                  value={formatCurrency(procurementKpis.contractLeakageYtd)}
+                  valueStyle={{ color: procurementKpis.contractLeakageYtd > 0 ? '#cf1322' : '#52c41a', fontSize: 26 }}
+                />
+              )}
+            </StatCard>
+          </Col>
         </Row>
 
         {/* Recent Orders */}

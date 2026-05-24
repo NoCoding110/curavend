@@ -21,6 +21,7 @@ import type { Env } from '../lib/env';
 import type { AuthUser } from '../middleware/auth';
 import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors';
 import { startWorkflow, getWorkflowStatus } from '../services/workflowService';
+import { autoConsumeForLabOrder } from '../services/labInventoryService';
 import { downloadFile } from '../services/storageService';
 import { generateLabOrderTrackingReport, XLSX_CONTENT_TYPE } from '../services/xlsxService';
 
@@ -275,7 +276,34 @@ app.post('/orders', async (c) => {
   } catch (err) {
     console.error('[labs] Failed to start asset-gen workflow:', err);
   }
-  return c.json({ id, orderNumber, workflowInstanceId }, 201);
+
+  // Auto-consume mapped consumables from kit-site inventory (FEFO).
+  // Non-blocking: shortages are surfaced in the response so the caller can warn.
+  let consumption: { attempted: number; fullyIssued: number; shortages: any[] } = {
+    attempted: 0,
+    fullyIssued: 0,
+    shortages: [],
+  };
+  if (parsed.data.kitSiteId && parsed.data.items?.length) {
+    try {
+      const items = parsed.data.items
+        .filter((i: any) => i.testCode)
+        .map((i: any) => ({ testCode: i.testCode, quantity: i.quantity }));
+      if (items.length > 0) {
+        consumption = await autoConsumeForLabOrder(c.env.DB, {
+          labOrderId: id,
+          siteId: parsed.data.kitSiteId,
+          labGroupId: parsed.data.labGroupId,
+          items,
+          performedByUserId: user.id,
+        });
+      }
+    } catch (err) {
+      console.error('[labs] auto-consume failed:', err);
+    }
+  }
+
+  return c.json({ id, orderNumber, workflowInstanceId, consumption }, 201);
 });
 
 app.get('/orders', async (c) => {

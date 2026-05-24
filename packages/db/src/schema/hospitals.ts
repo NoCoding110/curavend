@@ -38,6 +38,12 @@ export const hospitals = sqliteTable(
     // ── Procurement (Phase B) ─────────────────────────────────
     orderNumberPrefix: text("order_number_prefix"), // e.g. 'BGH' — falls back to 'ORD' if unset
 
+    // ── GPO membership (Feature 2, May 2026) ──────────────────
+    // Honors Vizient / Premier / HealthTrust contract rates in the pricing
+    // cascade. Nullable when the hospital has no GPO.
+    gpoOrganizationId: text("gpo_organization_id"),
+    gpoMemberId: text("gpo_member_id"), // hospital's member ID with the GPO
+
     // ── Tax (Phase E) ─────────────────────────────────────────
     defaultTaxJurisdictionCode: text("default_tax_jurisdiction_code"),
     taxExempt: integer("tax_exempt").default(0),

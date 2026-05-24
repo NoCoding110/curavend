@@ -1,0 +1,628 @@
+Date: Thu, 16 Apr 2026 15:16:03 +0000 (UTC)
+Message-ID: <545975519.5.1776352563948@91033b1db3cf>
+Subject: Exported From Confluence
+MIME-Version: 1.0
+Content-Type: multipart/related; 
+	boundary="----=_Part_4_574300047.1776352563947"
+
+------=_Part_4_574300047.1776352563947
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Content-Location: file:///C:/exported.html
+
+<html xmlns:o=3D'urn:schemas-microsoft-com:office:office'
+      xmlns:w=3D'urn:schemas-microsoft-com:office:word'
+      xmlns:v=3D'urn:schemas-microsoft-com:vml'
+      xmlns=3D'urn:w3-org-ns:HTML'>
+<head>
+    <meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8=
+">
+    <title>ProxyIQ Home</title>
+    <!--[if gte mso 9]>
+    <xml>
+        <o:OfficeDocumentSettings>
+            <o:TargetScreenSize>1024x640</o:TargetScreenSize>
+            <o:PixelsPerInch>72</o:PixelsPerInch>
+            <o:AllowPNG/>
+        </o:OfficeDocumentSettings>
+        <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>90</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+                <!--
+        @page Section1 {
+            size: 8.5in 11.0in;
+            margin: 1.0in;
+            mso-header-margin: .5in;
+            mso-footer-margin: .5in;
+            mso-paper-source: 0;
+        }
+
+        table {
+            border: solid 1px;
+            border-collapse: collapse;
+        }
+
+        table td, table th {
+            border: solid 1px;
+            padding: 5px;
+        }
+
+        td {
+            page-break-inside: avoid;
+        }
+
+        tr {
+            page-break-after: avoid;
+        }
+
+        div.Section1 {
+            page: Section1;
+        }
+
+        /* Confluence print stylesheet. Common to all themes for print medi=
+a */
+/* Full of !important until we improve batching for print CSS */
+
+@media print {
+    #main {
+        padding-bottom: 1em !important; /* The default padding of 6em is to=
+o much for printouts */
+    }
+
+    body {
+        font: var(--ds-font-body-small, Arial, Helvetica, FreeSans, sans-se=
+rif);
+    }
+
+    body, #full-height-container, #main, #page, #content, .has-personal-sid=
+ebar #content {
+        background: var(--ds-surface, #fff) !important;
+        color: var(--ds-text, #000) !important;
+        border: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+    }
+
+    a, a:link, a:visited, a:focus, a:hover, a:active {
+        color: var(--ds-text, #000);
+    }
+
+    #content h1,
+    #content h2,
+    #content h3,
+    #content h4,
+    #content h5,
+    #content h6 {
+        page-break-after: avoid;
+    }
+
+    pre {
+        font: var(--ds-font-code, Monaco, "Courier New", monospace);
+    }
+
+    #header,
+    .aui-header-inner,
+    #navigation,
+    #sidebar,
+    .sidebar,
+    #personal-info-sidebar,
+    .ia-fixed-sidebar,
+    .page-actions,
+    .navmenu,
+    .ajs-menu-bar,
+    .noprint,
+    .inline-control-link,
+    .inline-control-link a,
+    a.show-labels-editor,
+    .global-comment-actions,
+    .comment-actions,
+    .quick-comment-container,
+    #addcomment {
+        display: none !important;
+    }
+
+    /* CONF-28544 cannot print multiple pages in IE */
+    #splitter-content {
+        position: relative !important;
+    }
+
+    .comment .date::before {
+        content: none !important; /* remove middot for print view */
+    }
+
+    h1.pagetitle img {
+        height: auto;
+        width: auto;
+    }
+
+    .print-only {
+        display: block;
+    }
+
+    #footer {
+        position: relative !important; /* CONF-17506 Place the footer at en=
+d of the content */
+        margin: 0;
+        padding: 0;
+        background: none;
+        clear: both;
+    }
+
+    #poweredby {
+        border-top: none;
+        background: none;
+    }
+
+    #poweredby li.print-only {
+        display: list-item;
+        font-style: italic;
+    }
+
+    #poweredby li.noprint {
+        display: none;
+    }
+
+    /* no width controls in print */
+    .wiki-content .table-wrap,
+    .wiki-content p,
+    .panel .codeContent,
+    .panel .codeContent pre,
+    .image-wrap {
+        overflow: visible !important;
+    }
+
+    /* TODO - should this work? */
+    #children-section,
+    #comments-section .comment,
+    #comments-section .comment .comment-body,
+    #comments-section .comment .comment-content,
+    #comments-section .comment p {
+        page-break-inside: avoid;
+    }
+
+    #page-children a {
+        text-decoration: none;
+    }
+
+    /**
+     hide twixies
+
+     the specificity here is a hack because print styles
+     are getting loaded before the base styles. */
+    #comments-section.pageSection .section-header,
+    #comments-section.pageSection .section-title,
+    #children-section.pageSection .section-header,
+    #children-section.pageSection .section-title,
+    .children-show-hide {
+        padding-left: 0;
+        margin-left: 0;
+    }
+
+    .children-show-hide.icon {
+        display: none;
+    }
+
+    /* personal sidebar */
+    .has-personal-sidebar #content {
+        margin-right: 0px;
+    }
+
+    .has-personal-sidebar #content .pageSection {
+        margin-right: 0px;
+    }
+
+    .no-print, .no-print * {
+        display: none !important;
+    }
+}
+-->
+    </style>
+</head>
+<body>
+    <h1>ProxyIQ Home</h1>
+    <div class=3D"Section1">
+        <h1 local-id=3D"21ae83e10ee1" id=3D"ProxyIQHome-=F0=9F=8E=AFOvervie=
+w">=F0=9F=8E=AF Overview</h1>
+<p local-id=3D"26ec33da26d9">ProxyIQ is a comprehensive healthcare supply c=
+hain management platform built with modern cloud-native technologies. It fa=
+cilitates order management, billing, inventory tracking, and compliance rep=
+orting across multiple organizational entities (Hospitals/Facilities, Vendo=
+rs, Providers, and Super Vendors). The application emphasizes HIPAA complia=
+nce, multi-tenant architecture, and role-based access control.</p>
+<p local-id=3D"643b449ba479">"Think <strong>Amazon for medical equipment</s=
+trong> =E2=80=94 but specifically designed for hospitals. ProxyIQ eliminate=
+s phone calls, emails, and paperwork by digitizing the entire workflow from=
+ order creation to payment."</p>
+<p local-id=3D"185b37e74d7d"></p>
+<h2 local-id=3D"796535dd032d" id=3D"ProxyIQHome-=E2=9D=8CTheProblemWeSolve"=
+>=E2=9D=8C The Problem We Solve</h2>
+<h3 local-id=3D"87a57b157a82" id=3D"ProxyIQHome-BeforeProxyIQ(TraditionalPr=
+ocess):">Before ProxyIQ (Traditional Process):</h3>
+<p local-id=3D"bc920e27a56c"><strong>For Hospitals:</strong></p>
+<ul local-id=3D"252bef4d-5728-4293-bf12-8b3fa172f857">
+<li local-id=3D"abbb2ed2-171d-4396-b154-65e685ae5f43">
+<p local-id=3D"e81fe0c6e7d4">=F0=9F=93=9E Call vendors on the phone to orde=
+r equipment</p></li>
+<li local-id=3D"4eb5a47e-7b8b-4c8b-8d06-f0d0147e9d73">
+<p local-id=3D"89b64151ebe1">=F0=9F=93=A7 Send emails back and forth to con=
+firm availability</p></li>
+<li local-id=3D"d33e194c-0f45-4357-94b6-16e8b68303dd">
+<p local-id=3D"7012b8dee395">=F0=9F=93=9D Fill out paper forms or Excel spr=
+eadsheets</p></li>
+<li local-id=3D"9bcfb01f-3794-4e4c-a8d0-4a12e2fb6a40">
+<p local-id=3D"51188d4f16fa">=E2=9D=93 No visibility into order status ("Wh=
+ere's my wheelchair?")</p></li>
+<li local-id=3D"8e081abe-f29d-48e6-a6f7-451be7becb1e">
+<p local-id=3D"e7e4875e7535">=F0=9F=92=B0 Invoices arrive weeks later with =
+errors</p></li>
+<li local-id=3D"9b4a3948-d9d2-4de2-ac8f-484720348004">
+<p local-id=3D"5d06d68e780c">=F0=9F=93=8B No audit trail for compliance</p>=
+</li>
+</ul>
+<p local-id=3D"295f1fe37dd8"><strong>For Vendors:</strong></p>
+<ul local-id=3D"209e8353-2bf5-42cd-8292-acf10bbd0dd9">
+<li local-id=3D"c9d11087-e322-45a9-b867-5eebc4672985">
+<p local-id=3D"7a8f007ac341">=F0=9F=93=9E Missed calls =3D missed orders</p=
+></li>
+<li local-id=3D"2f943669-d344-44ae-80e4-7ba367afe628">
+<p local-id=3D"6dec61dacc97">=F0=9F=93=A7 Lost emails =3D delayed fulfillme=
+nt</p></li>
+<li local-id=3D"b6d2e7e7-4d83-4551-bf88-eaf9cd4d5c27">
+<p local-id=3D"5dd055f01526">=F0=9F=93=9D Manual invoice creation (error-pr=
+one)</p></li>
+<li local-id=3D"85339131-fdf6-44d8-9a29-efd6af6ba7ed">
+<p local-id=3D"83a2b59d7e3b">=E2=9D=93 No confirmation when hospital receiv=
+es delivery</p></li>
+<li local-id=3D"8317268c-fc26-4341-8704-0b0ab308c454">
+<p local-id=3D"7231f7734bf4">=F0=9F=92=B8 Payment delays due to invoice dis=
+putes</p></li>
+</ul>
+<p local-id=3D"a4e86f73e508"><strong>Result:</strong> Slow, frustrating, er=
+ror-prone for everyone. Patients wait longer for critical equipment.</p>
+<p local-id=3D"b53780fb55f5"></p>
+<h2 local-id=3D"20c7573c0308" id=3D"ProxyIQHome-=E2=9C=85OurSolution">=E2=
+=9C=85 Our Solution</h2>
+<p local-id=3D"09546593ac25">ProxyIQ is a <strong>single digital platform</=
+strong> where hospitals, vendors, and healthcare networks collaborate in re=
+al-time.</p>
+<h3 local-id=3D"db249ab51702" id=3D"ProxyIQHome-WhatProxyIQDoes:">What Prox=
+yIQ Does:</h3>
+<div class=3D"table-wrap">
+<table data-table-width=3D"760" data-layout=3D"default" data-local-id=3D"52=
+718d3d-615c-4d7e-a36e-a0e5b538641e" class=3D"confluenceTable">
+<tbody>
+<tr data-local-id=3D"c33204f4-235f-4303-b658-ef5aa98481a0">
+<th data-local-id=3D"f46857b1-f747-4bce-bd4d-31b58fe7fcbd" class=3D"conflue=
+nceTh">
+<p local-id=3D"86a0f53dbd0c">Traditional Way</p></th>
+<th data-local-id=3D"6ccf6c17-40e0-435f-99ef-5dd2668f8a0a" class=3D"conflue=
+nceTh">
+<p local-id=3D"3c6e07929055">ProxyIQ Way</p></th>
+</tr>
+<tr data-local-id=3D"613de2aa-1fd4-4ba1-91a5-3ce1660bacf6">
+<td data-local-id=3D"538fec5c-b0a8-4464-b7c7-c25fc55087aa" class=3D"conflue=
+nceTd">
+<p local-id=3D"e25196523130">Phone call to vendor</p></td>
+<td data-local-id=3D"e4e85c38-9821-4ee9-a876-067a130373ea" class=3D"conflue=
+nceTd">
+<p local-id=3D"6745c18fce73">Click "Create Order" button</p></td>
+</tr>
+<tr data-local-id=3D"7f4a50fa-d8f5-4817-8f89-e6ec313cdedc">
+<td data-local-id=3D"51dc3bcc-ae92-4069-a150-9ca2aa8d5834" class=3D"conflue=
+nceTd">
+<p local-id=3D"586cb7f1003e">Wait for vendor callback</p></td>
+<td data-local-id=3D"56755775-3017-4808-a267-4d811606bae8" class=3D"conflue=
+nceTd">
+<p local-id=3D"32a3948b9070">Vendor notified instantly</p></td>
+</tr>
+<tr data-local-id=3D"c2a86c1a-0578-4d4f-9fe2-67bacadaaab1">
+<td data-local-id=3D"ac2fc99d-7bed-431e-8c7d-89bd44631c1b" class=3D"conflue=
+nceTd">
+<p local-id=3D"031c57baf9aa">"Where's my order?" calls</p></td>
+<td data-local-id=3D"900ca424-b672-40ce-8c61-d856b5de794b" class=3D"conflue=
+nceTd">
+<p local-id=3D"1479365b5312">Real-time status tracking</p></td>
+</tr>
+<tr data-local-id=3D"5c5cc0bf-7e99-4b9b-8f59-b7bd6be59fd4">
+<td data-local-id=3D"4bbbfb45-22a5-40d7-bcb3-5abe9ef95784" class=3D"conflue=
+nceTd">
+<p local-id=3D"7bd822703113">Manual invoicing</p></td>
+<td data-local-id=3D"ead7743b-4750-4e93-a60b-40979854e5d0" class=3D"conflue=
+nceTd">
+<p local-id=3D"1d84c8e860e6">Auto-generated invoices</p></td>
+</tr>
+<tr data-local-id=3D"8d07d747-f9a9-4559-a85f-c4bf56cfa42e">
+<td data-local-id=3D"8a6cef27-96e1-49c2-8a2d-de5014717d32" class=3D"conflue=
+nceTd">
+<p local-id=3D"227f305ad2f6">3-5 days to process order</p></td>
+<td data-local-id=3D"a2061cfc-6079-4776-815e-6e972524b699" class=3D"conflue=
+nceTd">
+<p local-id=3D"47041cb5d3df">Order confirmed in &lt;1 hour</p></td>
+</tr>
+<tr data-local-id=3D"0a4a8dad-ab13-4a26-9ccc-c7a1ab897e82">
+<td data-local-id=3D"fa64609b-29ee-4b54-95c9-2c9893e3801d" class=3D"conflue=
+nceTd">
+<p local-id=3D"11492a6ffa88">No audit trail</p></td>
+<td data-local-id=3D"c4e83477-afb5-447d-a375-75b570dee7ca" class=3D"conflue=
+nceTd">
+<p local-id=3D"f9e991f45509">Complete compliance logging</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p local-id=3D"9b2e5fb84bce"></p>
+<h2 local-id=3D"ce942fc4e9a7" id=3D"ProxyIQHome-=F0=9F=91=A5WhoUsesProxyIQ?=
+">=F0=9F=91=A5 Who Uses ProxyIQ?</h2>
+<p local-id=3D"e5d1afe3af49">ProxyIQ serves <strong>5 types of users</stron=
+g>:</p>
+<h3 local-id=3D"69d074ec5907" id=3D"ProxyIQHome-1.=F0=9F=8F=A5FacilityUsers=
+">1. =F0=9F=8F=A5 Facility Users</h3>
+<p local-id=3D"c22729f8befa"><strong>Who:</strong> Nurses, clinicians, supp=
+ly chain staff at hospital branches/departments</p>
+<p local-id=3D"6785c6838fcd"><strong>What they do:</strong></p>
+<ul local-id=3D"35fd7b6d-dcd3-40bc-ba34-75a05c53ea6e">
+<li local-id=3D"67582ee5-0d99-4cd9-adfa-8aeff6b0fc87">
+<p local-id=3D"f07730f0e1fd">Create orders for patients (wheelchairs, oxyge=
+n tanks, hospital beds, etc.)</p></li>
+<li local-id=3D"748073c4-0232-43a7-9e0c-d08fd8e2921c">
+<p local-id=3D"fa37eec043d6">Track order status in real-time</p></li>
+<li local-id=3D"e3465a1f-3739-4417-9119-5ed365b626be">
+<p local-id=3D"85b3d67dc912">Chat with vendors about delivery details</p></=
+li>
+<li local-id=3D"720e2e5e-1995-4e28-b3e7-432c0e1c423f">
+<p local-id=3D"10ce3a4a8bdf">Confirm receipt of equipment</p></li>
+<li local-id=3D"017023a6-cb54-4649-8519-0537c5d309b5">
+<p local-id=3D"eade1b8feba3">Review and approve invoices</p></li>
+</ul>
+<p local-id=3D"19fb73f39baa"><strong>Example:</strong> A nurse at Kaiser Pe=
+rmanente - Downtown Branch needs a wheelchair for Room 305. Creates order i=
+n ProxyIQ =E2=86=92 Vendor confirms delivery for tomorrow at 10 AM.</p>
+<hr local-id=3D"207e7564-e6b6-4bf3-a0fd-a25f6b735aea">
+<h3 local-id=3D"4f9e3098c714" id=3D"ProxyIQHome-2.=F0=9F=9A=9AVendorUsers">=
+2. =F0=9F=9A=9A Vendor Users</h3>
+<p local-id=3D"e3fdec9a21e9"><strong>Who:</strong> Medical equipment suppli=
+ers (external companies like ABC Medical Supplies)</p>
+<p local-id=3D"427bf6259232"><strong>What they do:</strong></p>
+<ul local-id=3D"96535611-79fd-4c92-a893-cd4dfa2c2998">
+<li local-id=3D"be592775-79f2-4e7d-b1e4-cf496039e8f4">
+<p local-id=3D"e94b7fe36917">Receive order notifications instantly</p></li>
+<li local-id=3D"79b83d3d-9bf9-49a1-b651-d1982d9c6275">
+<p local-id=3D"f9143ea97743">Confirm or decline orders</p></li>
+<li local-id=3D"4fbe1f95-6e6a-4936-bcc4-5c379231219c">
+<p local-id=3D"bd7015c33506">Update delivery status (Ready to Ship =E2=86=
+=92 Shipped =E2=86=92 Delivered)</p></li>
+<li local-id=3D"3bcc0f6a-3c64-4ccd-b9ae-14e3b5536eb2">
+<p local-id=3D"c7eb34028616">Upload proof of delivery (signature photos)</p=
+></li>
+<li local-id=3D"e273074f-1fcb-42bf-9214-8c79a6fd2b28">
+<p local-id=3D"5c23a42d3506">Generate invoices automatically</p></li>
+</ul>
+<p local-id=3D"2342e29f9e4f"><strong>Example:</strong> ABC Medical Supplies=
+ receives wheelchair order at 9 AM, confirms delivery for next day, uploads=
+ signature photo when delivered, system auto-generates invoice.</p>
+<hr local-id=3D"5b4279b6-db82-46f8-84bb-285223e0da13">
+<h3 local-id=3D"f6249be66f16" id=3D"ProxyIQHome-3.=F0=9F=8F=A2ProviderUsers=
+">3. =F0=9F=8F=A2 Provider Users</h3>
+<p local-id=3D"a1b9863863da"><strong>Who:</strong> Hospital network executi=
+ves (e.g., Kaiser Permanente corporate, HCA Healthcare)</p>
+<p local-id=3D"c706467d29a2"><strong>What they do:</strong></p>
+<ul local-id=3D"d70bf440-615e-4995-893a-da0204d1ddc0">
+<li local-id=3D"04d96c2b-83fd-4fc2-b7ff-19fe8cd5d683">
+<p local-id=3D"86d7f92218cf">Monitor ALL orders across ALL facilities in th=
+eir network</p></li>
+<li local-id=3D"8bf671df-3dc4-4b71-912b-d492ab72b573">
+<p local-id=3D"f0d6269a44f6">View network-wide analytics (spending trends, =
+vendor performance)</p></li>
+<li local-id=3D"654bf326-9e75-4704-9208-caf1dfec6696">
+<p local-id=3D"27b182b28138">Manage contracts with vendors</p></li>
+<li local-id=3D"458e6e2d-eaa2-4d5c-b115-304b6db7bcab">
+<p local-id=3D"871093c5a1c7">Oversee compliance across facilities</p></li>
+</ul>
+<p local-id=3D"cf8dc485c527"><strong>Key:</strong> Providers can <strong>VI=
+EW and MONITOR</strong> but cannot <strong>CREATE or FULFILL</strong> order=
+s. They are purely for oversight.</p>
+<p local-id=3D"f186e8e7db60"><strong>Example:</strong> Kaiser Permanente co=
+rporate can see all orders from Kaiser Downtown, Kaiser Uptown, Kaiser ICU,=
+ etc., in one dashboard.</p>
+<hr local-id=3D"0a955c4e-9f6d-4a51-86eb-6fcc99c9a8d1">
+<h3 local-id=3D"be6f503d40dd" id=3D"ProxyIQHome-4.=F0=9F=93=A6SuperVendorUs=
+ers">4. =F0=9F=93=A6 Super Vendor Users</h3>
+<p local-id=3D"2f2cfdebc111"><strong>Who:</strong> Multi-vendor organizatio=
+ns (umbrella companies managing multiple vendor entities)</p>
+<p local-id=3D"a1024fa11613"><strong>What they do:</strong></p>
+<ul local-id=3D"31500c1d-6701-4ec5-a523-3d60f6cadc72">
+<li local-id=3D"5584c36e-8678-4b61-8ec0-7ef47969e2f1">
+<p local-id=3D"a8d48c17a687">Oversee multiple vendor companies under one or=
+ganization</p></li>
+<li local-id=3D"1b519223-8802-400c-9b09-24c1707a215c">
+<p local-id=3D"ad9a06728dee">Consolidated reporting across all vendors</p><=
+/li>
+<li local-id=3D"cc0b436d-8967-48d7-b51e-64f770194f2e">
+<p local-id=3D"444ba3f6b046">Manage group contracts and master pricing agre=
+ements</p></li>
+<li local-id=3D"cb07c206-a847-4597-ba01-e6a49712970b">
+<p local-id=3D"919a18dc8b0b">Monitor performance of all vendors in the netw=
+ork</p></li>
+</ul>
+<p local-id=3D"9df2544faba7"><strong>Example:</strong> XYZ Medical Group ow=
+ns ABC Medical Supplies, DEF Equipment, and GHI Healthcare. Super Vendor ro=
+le lets them see all orders, invoices, and performance across all three ven=
+dors.</p>
+<p local-id=3D"3885eb2c50aa"><strong>Note:</strong> Less common role, but u=
+seful for large distributors.</p>
+<hr local-id=3D"8b79617c-8fbb-4d81-b2e7-1382584ad008">
+<h3 local-id=3D"05cdd8700788" id=3D"ProxyIQHome-5.=E2=9A=99=EF=B8=8FAdminUs=
+ers">5. =E2=9A=99=EF=B8=8F Admin Users</h3>
+<p local-id=3D"4412a5ebc5ad"><strong>Who:</strong> Platform administrators =
+(Nexkara staff or client admin users)</p>
+<p local-id=3D"d40a118e0236"><strong>What they do:</strong></p>
+<ul local-id=3D"020627d7-4c5f-4971-99d9-84999fd5f68c">
+<li local-id=3D"892239cf-3069-4d7c-826b-438fe4ef6692">
+<p local-id=3D"83d0a2710f50">Create and manage users (facilities, vendors, =
+providers)</p></li>
+<li local-id=3D"b0cf55fa-1c28-4986-aef7-86cc0c3873ff">
+<p local-id=3D"912003dc6e47">Configure facility settings (payment methods, =
+contracts)</p></li>
+<li local-id=3D"8f02d672-222e-4afe-a0db-dde71513cec7">
+<p local-id=3D"526db258e68b">Review and approve/deny user creation requests=
+</p></li>
+<li local-id=3D"b9f657fe-ba12-41fb-a55e-ff5e9abbacc0">
+<p local-id=3D"cb042c245571">Monitor platform health and performance</p></l=
+i>
+<li local-id=3D"3e745b34-b339-4b22-8bd5-731039555aa5">
+<p local-id=3D"8300dd5b0b12">Handle support tickets</p></li>
+<li local-id=3D"3f7b6342-4790-4b6a-a394-bb282e57a2d2">
+<p local-id=3D"792243fa8531">Manage compliance and audit trails</p></li>
+<li local-id=3D"33759448-2d6e-410b-b822-7d5ed8ed1d2f">
+<p local-id=3D"b6c007d97939">Generate platform-wide reports</p></li>
+</ul>
+<p local-id=3D"8dfe297ded1d"><strong>Full System Access:</strong> Admins ca=
+n see and manage everything across the platform.</p>
+<p local-id=3D"1a9848f3f8d7"></p>
+<h2 local-id=3D"47ca6a891397" id=3D"ProxyIQHome-=F0=9F=9A=80KeyFeatures">=
+=F0=9F=9A=80 Key Features</h2>
+<h3 local-id=3D"d5130ed3b19a" id=3D"ProxyIQHome-1.OrderManagement">1. Order=
+ Management</h3>
+<ul local-id=3D"4adac0e7-4ca7-4d83-bc85-b1e2df57de2a">
+<li local-id=3D"e4f9f339-6bd0-4ee6-a3ef-dc65db58d3cf">
+<p local-id=3D"1a21bb9cd7d5">=E2=9C=85 Create orders in seconds (auto-popul=
+ated patient data)</p></li>
+<li local-id=3D"5dc0fc35-e412-4552-9b9f-e0b77d8a6b2f">
+<p local-id=3D"3ab0ddc584cf">=E2=9C=85 Real-time order tracking (status upd=
+ates for both hospital and vendor)</p></li>
+<li local-id=3D"9c57d8e5-b50f-4958-b998-6153fdd38061">
+<p local-id=3D"d16de1e4fc60">=E2=9C=85 Order assignment based on payment me=
+thod:</p>
+<ul local-id=3D"4c3f5446-5001-4bf5-ad0b-bf28d20afb1e">
+<li local-id=3D"bf29a9df-7017-4d6c-8363-8ca8d21083f3">
+<p local-id=3D"fb1c0915c76e"><strong>Purchase Order (PO):</strong> Order ro=
+utes to internal Clinician</p></li>
+<li local-id=3D"2cb35b21-a860-4585-8ca6-923f6502cef8">
+<p local-id=3D"817bc3f57476"><strong>Invoice/Billing:</strong> Order routes=
+ to external Vendor</p></li>
+</ul></li>
+<li local-id=3D"6ca2ab86-a8e8-4132-936d-1cd8bc023d87">
+<p local-id=3D"e66c27dd7dab">=E2=9C=85 Order history and audit trail</p></l=
+i>
+</ul>
+<h3 local-id=3D"819b2f72c489" id=3D"ProxyIQHome-2.Real-TimeCommunication">2=
+. Real-Time Communication</h3>
+<ul local-id=3D"7cf11094-b504-48ca-a10d-5bf6c4d66d7a">
+<li local-id=3D"ee47046d-7655-41ba-a565-e3b7bd9598cf">
+<p local-id=3D"b85302980d77">=E2=9C=85 Built-in chat for each order (no mor=
+e phone tag)</p></li>
+<li local-id=3D"784aa0c4-2d90-4c8d-90cc-66dce4b42168">
+<p local-id=3D"bfa311807f04">=E2=9C=85 Instant notifications (browser alert=
+s, email)</p></li>
+<li local-id=3D"225b40bd-6eeb-4803-b0b4-336a234c45af">
+<p local-id=3D"0b601c18e51e">=E2=9C=85 Message attachments (photos, documen=
+ts)</p></li>
+<li local-id=3D"1bd627c1-6c78-414f-bf38-718d80e417b3">
+<p local-id=3D"a7fdb304cc6f">=E2=9C=85 Chat history saved with order</p></l=
+i>
+</ul>
+<h3 local-id=3D"cb848f73dfd0" id=3D"ProxyIQHome-3.AutomatedBilling&amp;Invo=
+icing">3. Automated Billing &amp; Invoicing</h3>
+<ul local-id=3D"68558e6f-db5b-4162-94f2-49a22fceb1c2">
+<li local-id=3D"cabb6db6-ea9f-40e8-94f7-2b4e940eda10">
+<p local-id=3D"db26bac06f78">=E2=9C=85 Auto-invoice generation based on con=
+tract pricing</p></li>
+<li local-id=3D"10a459cf-22d3-4e85-a0ec-3daf7815cba1">
+<p local-id=3D"5cc74483434d">=E2=9C=85 PDF invoice download</p></li>
+<li local-id=3D"27db18c6-8ef8-4d22-b2b7-27b87e41af62">
+<p local-id=3D"d9a045a05a75">=E2=9C=85 Payment tracking</p></li>
+<li local-id=3D"8734c942-95f2-4bf2-aa80-156188dd753f">
+<p local-id=3D"f6e479b26dc2">=E2=9C=85 CSV export/import for ERP systems</p=
+></li>
+<li local-id=3D"86b31844-8945-4ddb-827d-affe4c10604c">
+<p local-id=3D"22687838390f">=E2=9C=85 Invoice status tracking (Open, Paid,=
+ Disputed)</p></li>
+</ul>
+<h3 local-id=3D"bf0e3edf4016" id=3D"ProxyIQHome-4.Analytics&amp;Reporting">=
+4. Analytics &amp; Reporting</h3>
+<ul local-id=3D"37c3347b-755d-4d23-a973-c613b6e4b542">
+<li local-id=3D"a0e0a607-3699-4a09-9d0b-9f4c5a3fc7b6">
+<p local-id=3D"997d0634f51f">=E2=9C=85 Spend analysis (by vendor, by produc=
+t, by facility)</p></li>
+<li local-id=3D"e48a6243-8c62-4f95-b9ce-518e2f0d6133">
+<p local-id=3D"e74a5188b782">=E2=9C=85 Order volume trends</p></li>
+<li local-id=3D"1c377f8c-5918-4738-9bf7-a140a814a4a3">
+<p local-id=3D"ea4ac93cbe8f">=E2=9C=85 Vendor performance metrics</p></li>
+<li local-id=3D"c0081efd-e640-4bfa-9e70-7c746d9f929b">
+<p local-id=3D"e8fb83978766">=E2=9C=85 Compliance reports (OIG screening, l=
+icense expiry)</p></li>
+<li local-id=3D"a5b8e2a6-ed36-40a4-a83c-dd5a2d6b4db7">
+<p local-id=3D"b41fc703dd48">=E2=9C=85 Customizable dashboards</p></li>
+</ul>
+<h3 local-id=3D"2ce893d6bf40" id=3D"ProxyIQHome-5.Compliance&amp;Security">=
+5. Compliance &amp; Security</h3>
+<ul local-id=3D"ab5bf7cd-dd3a-43ee-a6b7-929a14641eea">
+<li local-id=3D"db8d2198-c427-4a0e-8c5e-02556ef81a31">
+<p local-id=3D"8503667c92ce">=E2=9C=85 HIPAA compliant (encrypted patient d=
+ata)</p></li>
+<li local-id=3D"81180640-d7ad-4a68-b8d8-e93e136efe65">
+<p local-id=3D"f161e06ae345">=E2=9C=85 Role-based access control (RBAC)</p>=
+</li>
+<li local-id=3D"ae4e4311-21c8-4bb0-9665-76ae457ef30a">
+<p local-id=3D"cf2a77f06e9f">=E2=9C=85 Complete audit trail for all actions=
+</p></li>
+<li local-id=3D"1a84b4c9-b1a0-4904-9e76-ceba4ab876e8">
+<p local-id=3D"095b8f201881">=E2=9C=85 OIG vendor screening</p></li>
+<li local-id=3D"d81e1a5b-cea5-448a-97ff-bfd226b8c311">
+<p local-id=3D"d9866da92805">=E2=9C=85 AWS-hosted with SOC 2 compliance</p>=
+</li>
+</ul>
+<h3 local-id=3D"49102caaacca" id=3D"ProxyIQHome-6.IntegrationCapabilities">=
+6. Integration Capabilities</h3>
+<ul local-id=3D"e78c79a4-b1e2-4e57-a891-331ecf25caf0">
+<li local-id=3D"e3a802e4-078f-4681-8d9d-cadf5bb51efc">
+<p local-id=3D"b1298f6ea90c">=E2=9C=85 <strong>Epic EHR Integration</strong=
+> (in progress - Q2 2026)</p>
+<ul local-id=3D"43d11831-7337-4ae6-8b96-cee8d77e5ceb">
+<li local-id=3D"e0a4f7d9-c81b-4de5-b68a-ddaa09e1235c">
+<p local-id=3D"cbd9c991eb36">Doctor orders equipment in Epic =E2=86=92 Auto=
+-creates order in ProxyIQ</p></li>
+<li local-id=3D"c268ed45-33f3-46bb-b500-f834b3ad3b53">
+<p local-id=3D"270ba4b8bf20">ProxyIQ sends delivery confirmation back to Ep=
+ic</p></li>
+</ul></li>
+<li local-id=3D"88906d3d-8e2d-45bf-b809-c0ebe4d12d6a">
+<p local-id=3D"4047b4d0c3d4">=E2=9C=85 CSV import/export for bulk operation=
+s</p></li>
+<li local-id=3D"fbc0220d-c678-41a7-8827-6a0a778103ec">
+<p local-id=3D"eb3c232e6a5c">=E2=9C=85 API available for custom integration=
+s</p></li>
+</ul>
+<p local-id=3D"53b06beea0ea"></p>
+<p local-id=3D"e65bd54ec1f2"><br>
+Staging Env and test accounts<br><a class=3D"external-link" data-card-appea=
+rance=3D"inline" href=3D"https://stage.d8qn1s4jwnrxe.amplifyapp.com/" local=
+-id=3D"af7d5efa-e38e-4824-8415-6ebc874820b9" rel=3D"nofollow">https://stage=
+.d8qn1s4jwnrxe.amplifyapp.com/</a> <br><a class=3D"external-link" href=3D"m=
+ailto:testvendor@yopmail.com" rel=3D"nofollow">testvendor@yopmail.com</a><b=
+r><a class=3D"external-link" href=3D"mailto:testprovider@yopmail.com" rel=
+=3D"nofollow">testprovider@yopmail.com</a></p>
+<p local-id=3D"b829290194b6"><a class=3D"external-link" href=3D"mailto:test=
+providerbilling@yopmail.com" rel=3D"nofollow">testproviderbilling@yopmail.c=
+om</a></p>
+<p local-id=3D"1326e075107e"><a class=3D"external-link" href=3D"mailto:test=
+facility@yopmail.com" rel=3D"nofollow">testfacility@yopmail.com</a><br><a c=
+lass=3D"external-link" href=3D"mailto:testprimarycontact@yopmail.com" rel=
+=3D"nofollow">testprimarycontact@yopmail.com</a> (facility-2-for-provider-b=
+illing-account)</p>
+<p local-id=3D"74b3121e278a"><a class=3D"external-link" href=3D"mailto:test=
+clinician@yopmail.com" rel=3D"nofollow">testclinician@yopmail.com</a></p>
+<p local-id=3D"0c3772e520d8">password- Beach123!<br></p>
+    </div>
+</body>
+</html>
+------=_Part_4_574300047.1776352563947--

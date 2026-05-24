@@ -85,16 +85,18 @@ app.post('/onboard', async (c) => {
   const providerId = crypto.randomUUID();
   const now = new Date().toISOString();
 
+  // NOTE: `npi` / `phone` / `billingEmail` aren't in the providers schema;
+  // they'd need a migration before being persistable. `address` maps to
+  // `physicalStreetAddress` and friends.
   await db.insert(providers).values({
     id: providerId,
     name: body.name,
-    npi: body.npi ?? null,
-    address: body.address ?? null,
-    city: body.city ?? null,
-    state: body.state ?? null,
-    zip: body.zip ?? null,
-    phone: body.phone ?? null,
-    billingEmail: body.billingEmail ?? null,
+    ein: body.ein ?? null,
+    physicalStreetAddress: body.address ?? body.physicalStreetAddress ?? null,
+    physicalCity: body.city ?? null,
+    physicalState: body.state ?? null,
+    physicalZip: body.zip ?? null,
+    primaryAccountEmail: body.adminUser?.email ?? body.primaryAccountEmail ?? null,
     createdAt: now,
     updatedAt: now,
   });

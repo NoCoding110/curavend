@@ -8,11 +8,25 @@ import {
   InputNumber,
   Typography,
   message,
+  Modal,
   Space,
   Divider,
+  Table,
+  Tag,
+  Alert,
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { labsApi, type LabGroup, type LabKitSite } from '../../../api/labs';
+
+interface Shortage {
+  testCode: string;
+  consumableId: string;
+  consumableCode: string;
+  requested: number;
+  issued: number;
+  short: number;
+  isCritical: boolean;
+}
 
 const { Title } = Typography;
 
@@ -36,6 +50,58 @@ const CreateLabOrder: React.FC = () => {
     })();
   }, []);
 
+  const showShortageDialog = (orderId: string, orderNumber: string, shortages: Shortage[]) => {
+    const hasCritical = shortages.some((s) => s.isCritical);
+    Modal[hasCritical ? 'error' : 'warning']({
+      title: hasCritical
+        ? `Order ${orderNumber} created — CRITICAL shortages detected`
+        : `Order ${orderNumber} created — minor shortages logged`,
+      width: 720,
+      maskClosable: false,
+      okText: hasCritical ? 'Acknowledge & continue' : 'OK',
+      content: (
+        <div>
+          <Alert
+            type={hasCritical ? 'error' : 'warning'}
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={
+              hasCritical
+                ? 'One or more critical consumables were not fully stocked. The order was created, but the lab cannot run these tests until inventory is replenished.'
+                : 'Some consumables were under-stocked. The order is valid; please reorder soon.'
+            }
+          />
+          <Table<Shortage>
+            size="small"
+            pagination={false}
+            rowKey={(r) => `${r.testCode}-${r.consumableId}`}
+            dataSource={shortages}
+            columns={[
+              { title: 'Test', dataIndex: 'testCode', width: 90 },
+              { title: 'Consumable', dataIndex: 'consumableCode', width: 130 },
+              { title: 'Requested', dataIndex: 'requested', width: 90, align: 'right' as const },
+              { title: 'Issued', dataIndex: 'issued', width: 80, align: 'right' as const },
+              {
+                title: 'Short',
+                dataIndex: 'short',
+                width: 80,
+                align: 'right' as const,
+                render: (v: number) => <strong style={{ color: '#cf1322' }}>{v}</strong>,
+              },
+              {
+                title: 'Priority',
+                dataIndex: 'isCritical',
+                width: 90,
+                render: (v: boolean) => (v ? <Tag color="red">CRITICAL</Tag> : <Tag>routine</Tag>),
+              },
+            ]}
+          />
+        </div>
+      ),
+      onOk: () => navigate(`/labs/orders/${orderId}`),
+    });
+  };
+
   const submit = async (values: any) => {
     setSubmitting(true);
     try {
@@ -50,8 +116,14 @@ const CreateLabOrder: React.FC = () => {
           barcode: `${t.testCode}-${Date.now()}`,
         })),
       });
-      message.success(`Lab order ${res.orderNumber} created. Assets generating…`);
-      navigate(`/labs/orders/${res.id}`);
+      const shortages: Shortage[] = res?.consumption?.shortages ?? [];
+      if (shortages.length > 0) {
+        // Surface shortages BEFORE navigating so user must acknowledge.
+        showShortageDialog(res.id, res.orderNumber, shortages);
+      } else {
+        message.success(`Lab order ${res.orderNumber} created. Assets generating…`);
+        navigate(`/labs/orders/${res.id}`);
+      }
     } catch (err: any) {
       message.error(err.response?.data?.error || 'Failed to create order');
     } finally {

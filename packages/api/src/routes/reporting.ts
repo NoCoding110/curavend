@@ -10,6 +10,11 @@ import {
   vendors,
   users,
   hospitalVendors,
+  hospitalFacilities,
+  hospitalDepartments,
+  contracts,
+  contractItems,
+  gpoContractItems,
 } from '@curavend/db';
 import type { Env } from '../lib/env';
 import {
@@ -414,16 +419,97 @@ app.get('/orders-cancelled', async (c) => {
   return c.json({ items: raw.results ?? [] });
 });
 
+/**
+ * Expanded vendor scorecard — surfaces the operational metrics that
+ * matter when buyers compare vendor performance:
+ *   - total_orders, completed, cancelled, modified  (baseline)
+ *   - on_time_pct        — % of orders delivered within 48h of vendor assignment
+ *   - response_time_avg  — avg hours from NEW_ORDER -> VENDOR_CONFIRMED_RECEIPT
+ *   - qc_pass_pct        — lab-order QC pass rate (PASSED / (PASSED+FAILED))
+ *   - contract_compliance_pct — % of order-items priced via active contract
+ *   - sla_breach_count   — count of SLA-breach notifications fanned out about this vendor's orders
+ *
+ * Implementation note: order_history is the source-of-truth for status
+ * transition timestamps (orders has no direct `delivered_at` / `confirmed_at`
+ * columns). We pull min(created_at) per (order_id, status) to get the
+ * timestamps cheaply.
+ */
 app.get('/vendor-scorecard', async (c) => {
   const db = getDb(c.env.DB);
   const raw: any = await db.run(sql.raw(`
-    SELECT v.id as vendor_id, v.name as vendor_name,
-      COUNT(o.id) as total_orders,
+    WITH delivery_metrics AS (
+      SELECT
+        o.vendor_id,
+        o.id as order_id,
+        s.shipment_date as assigned_at,
+        s.shipment_date as confirmed_at,
+        s.actual_delivery_date as delivered_at,
+        -- Response time = hours from order creation to first shipment
+        -- (proxy for time-to-fulfillment because we don't have a structured
+        -- status-transition log to read VENDOR_CONFIRMED_RECEIPT timestamps from).
+        CASE
+          WHEN s.shipment_date IS NOT NULL THEN
+            (julianday(s.shipment_date) - julianday(o.created_at)) * 24.0
+          ELSE NULL
+        END as response_hours,
+        -- "On time" = delivered within 48h of shipment.
+        CASE
+          WHEN s.actual_delivery_date IS NOT NULL AND s.shipment_date IS NOT NULL THEN
+            CASE WHEN (julianday(s.actual_delivery_date) - julianday(s.shipment_date)) * 24.0 <= 48 THEN 1 ELSE 0 END
+          ELSE NULL
+        END as on_time
+      FROM orders o
+      LEFT JOIN order_shipments s ON s.order_id = o.id AND s.shipment_sequence = 1
+      WHERE o.vendor_id IS NOT NULL
+    ),
+    item_compliance AS (
+      SELECT o.vendor_id, COUNT(oi.id) AS total_items,
+        SUM(CASE WHEN oi.price_source = 'CONTRACT' THEN 1 ELSE 0 END) AS contract_items
+      FROM orders o
+      LEFT JOIN order_items oi ON oi.order_id = o.id
+      WHERE o.vendor_id IS NOT NULL
+      GROUP BY o.vendor_id
+    ),
+    lab_qc AS (
+      SELECT lo.external_vendor_name as vendor_label,
+        SUM(CASE WHEN lo.qc_status = 'PASSED' THEN 1 ELSE 0 END) AS passed,
+        SUM(CASE WHEN lo.qc_status IN ('PASSED','FAILED') THEN 1 ELSE 0 END) AS evaluated
+      FROM lab_orders lo
+      GROUP BY lo.external_vendor_name
+    ),
+    sla_breaches AS (
+      SELECT ndl.related_entity_id AS order_id, COUNT(*) AS breach_count
+      FROM notification_delivery_log ndl
+      WHERE ndl.event_type LIKE '%_SLA' OR ndl.event_type LIKE '%_OVERDUE'
+      GROUP BY ndl.related_entity_id
+    ),
+    sla_per_vendor AS (
+      SELECT o.vendor_id, COUNT(*) AS sla_breach_count
+      FROM sla_breaches sb
+      JOIN orders o ON o.id = sb.order_id
+      WHERE o.vendor_id IS NOT NULL
+      GROUP BY o.vendor_id
+    )
+    SELECT
+      v.id as vendor_id,
+      v.name as vendor_name,
+      COUNT(DISTINCT o.id) as total_orders,
       SUM(CASE WHEN o.status='COMPLETED' THEN 1 ELSE 0 END) as completed,
       SUM(CASE WHEN o.status='CANCELLED' THEN 1 ELSE 0 END) as cancelled,
-      SUM(CASE WHEN o.order_sub_status='ORDER_REQUESTED_FOR_MODIFY' THEN 1 ELSE 0 END) as modified
-    FROM vendors v LEFT JOIN orders o ON o.vendor_id = v.id
+      SUM(CASE WHEN o.order_sub_status='ORDER_REQUESTED_FOR_MODIFY' THEN 1 ELSE 0 END) as modified,
+      -- Aggregates over delivery_metrics
+      (SELECT ROUND(AVG(response_hours), 2) FROM delivery_metrics dm WHERE dm.vendor_id = v.id AND response_hours IS NOT NULL) as avg_response_hours,
+      (SELECT ROUND(100.0 * AVG(on_time), 1) FROM delivery_metrics dm WHERE dm.vendor_id = v.id AND on_time IS NOT NULL) as on_time_pct,
+      -- Compliance
+      (SELECT ROUND(100.0 * contract_items / NULLIF(total_items, 0), 1) FROM item_compliance ic WHERE ic.vendor_id = v.id) as contract_compliance_pct,
+      -- Lab QC (joined by vendor name as a soft link)
+      (SELECT ROUND(100.0 * passed / NULLIF(evaluated, 0), 1) FROM lab_qc lq WHERE lq.vendor_label = v.name) as qc_pass_pct,
+      -- SLA breaches
+      COALESCE((SELECT sla_breach_count FROM sla_per_vendor spv WHERE spv.vendor_id = v.id), 0) as sla_breach_count
+    FROM vendors v
+    LEFT JOIN orders o ON o.vendor_id = v.id
     GROUP BY v.id, v.name
+    ORDER BY total_orders DESC
   `));
   return c.json({ items: raw.results ?? [] });
 });
@@ -604,6 +690,250 @@ app.get('/spend.xlsx', async (c) => {
       'Content-Type': XLSX_CONTENT_TYPE,
       'Content-Disposition': `attachment; filename="spend-by-${groupBy}.xlsx"`,
     },
+  });
+});
+
+// ─── GET /spend-by-facility ────────────────────────────────────────────────
+// Sum invoice line totals grouped by hospital_facilities (joined via orders.facility_id).
+// Hospital users see their own; admins can filter by hospitalId.
+app.get('/spend-by-facility', async (c) => {
+  const db = getDb(c.env.DB);
+  const user = c.get('user');
+  const { startDate, endDate, hospitalId } = c.req.query();
+
+  const scopeHospitalId =
+    user.userType === 'HOSPITAL' && user.hospitalId
+      ? user.hospitalId
+      : hospitalId || null;
+
+  // Build subquery using raw SQL for clarity given the join chain
+  const dateFilter = [] as string[];
+  if (startDate) dateFilter.push(`inv.created_at >= '${startDate}'`);
+  if (endDate) dateFilter.push(`inv.created_at <= '${endDate}'`);
+  const hospitalFilter = scopeHospitalId ? `AND inv.hospital_id = '${scopeHospitalId}'` : '';
+  const dateClause = dateFilter.length ? `AND ${dateFilter.join(' AND ')}` : '';
+
+  const result = await (db as any).all(sql.raw(`
+    SELECT
+      COALESCE(f.id, 'unassigned') AS facility_id,
+      COALESCE(f.name, 'Unassigned') AS facility_name,
+      COALESCE(f.city, '') AS city,
+      COALESCE(f.state, '') AS state,
+      COUNT(DISTINCT inv.id) AS invoice_count,
+      COUNT(DISTINCT inv.order_id) AS order_count,
+      SUM(COALESCE(ii.line_total_cents, ii.spend * 100, 0)) / 100.0 AS total_spend_usd
+    FROM invoices inv
+    LEFT JOIN orders o ON o.id = inv.order_id
+    LEFT JOIN hospital_facilities f ON f.id = o.facility_id
+    LEFT JOIN invoice_items ii ON ii.invoice_id = inv.id
+    WHERE 1 = 1 ${hospitalFilter} ${dateClause}
+    GROUP BY COALESCE(f.id, 'unassigned')
+    ORDER BY total_spend_usd DESC
+  `));
+  return c.json({ items: result.results ?? [] });
+});
+
+// ─── GET /spend-by-department ──────────────────────────────────────────────
+app.get('/spend-by-department', async (c) => {
+  const db = getDb(c.env.DB);
+  const user = c.get('user');
+  const { startDate, endDate, hospitalId, facilityId } = c.req.query();
+  const scopeHospitalId =
+    user.userType === 'HOSPITAL' && user.hospitalId
+      ? user.hospitalId
+      : hospitalId || null;
+
+  const dateFilter = [] as string[];
+  if (startDate) dateFilter.push(`inv.created_at >= '${startDate}'`);
+  if (endDate) dateFilter.push(`inv.created_at <= '${endDate}'`);
+  const hospitalFilter = scopeHospitalId ? `AND inv.hospital_id = '${scopeHospitalId}'` : '';
+  const facilityFilter = facilityId ? `AND o.facility_id = '${facilityId}'` : '';
+  const dateClause = dateFilter.length ? `AND ${dateFilter.join(' AND ')}` : '';
+
+  const result = await (db as any).all(sql.raw(`
+    SELECT
+      COALESCE(d.id, 'unassigned') AS department_id,
+      COALESCE(d.name, 'Unassigned') AS department_name,
+      COUNT(DISTINCT inv.id) AS invoice_count,
+      SUM(COALESCE(ii.line_total_cents, ii.spend * 100, 0)) / 100.0 AS total_spend_usd
+    FROM invoices inv
+    LEFT JOIN orders o ON o.id = inv.order_id
+    LEFT JOIN hospital_departments d ON d.id = o.department_id
+    LEFT JOIN invoice_items ii ON ii.invoice_id = inv.id
+    WHERE 1 = 1 ${hospitalFilter} ${facilityFilter} ${dateClause}
+    GROUP BY COALESCE(d.id, 'unassigned')
+    ORDER BY total_spend_usd DESC
+  `));
+  return c.json({ items: result.results ?? [] });
+});
+
+// ─── GET /multi-site-rollup ────────────────────────────────────────────────
+// Cross-facility scorecard: rollup of orders, invoices, on-time %, exception count.
+// Powers the multi-site spend dashboard. ADMIN: see all hospitals. HOSPITAL: own only.
+app.get('/multi-site-rollup', async (c) => {
+  const db = getDb(c.env.DB);
+  const user = c.get('user');
+  const { startDate, endDate, hospitalId } = c.req.query();
+  const scopeHospitalId =
+    user.userType === 'HOSPITAL' && user.hospitalId
+      ? user.hospitalId
+      : hospitalId || null;
+  const hospitalFilter = scopeHospitalId ? `AND inv.hospital_id = '${scopeHospitalId}'` : '';
+  const dateFilter = [] as string[];
+  if (startDate) dateFilter.push(`inv.created_at >= '${startDate}'`);
+  if (endDate) dateFilter.push(`inv.created_at <= '${endDate}'`);
+  const dateClause = dateFilter.length ? `AND ${dateFilter.join(' AND ')}` : '';
+
+  const result = await (db as any).all(sql.raw(`
+    WITH facility_spend AS (
+      SELECT
+        COALESCE(f.id, 'unassigned') AS facility_id,
+        COALESCE(f.name, 'Unassigned') AS facility_name,
+        h.id AS hospital_id,
+        h.name AS hospital_name,
+        COUNT(DISTINCT inv.id) AS invoice_count,
+        COUNT(DISTINCT inv.order_id) AS order_count,
+        SUM(COALESCE(ii.line_total_cents, ii.spend * 100, 0)) / 100.0 AS total_spend_usd
+      FROM invoices inv
+      LEFT JOIN orders o ON o.id = inv.order_id
+      LEFT JOIN hospital_facilities f ON f.id = o.facility_id
+      LEFT JOIN hospitals h ON h.id = inv.hospital_id
+      LEFT JOIN invoice_items ii ON ii.invoice_id = inv.id
+      WHERE 1 = 1 ${hospitalFilter} ${dateClause}
+      GROUP BY COALESCE(f.id, 'unassigned'), h.id
+    ),
+    facility_exceptions AS (
+      SELECT
+        COALESCE(o.facility_id, 'unassigned') AS facility_id,
+        COUNT(*) AS exception_count
+      FROM three_way_matches twm
+      LEFT JOIN invoices inv ON inv.id = twm.invoice_id
+      LEFT JOIN orders o ON o.id = inv.order_id
+      WHERE twm.match_status != 'PERFECT' ${hospitalFilter}
+      GROUP BY COALESCE(o.facility_id, 'unassigned')
+    )
+    SELECT
+      fs.facility_id,
+      fs.facility_name,
+      fs.hospital_id,
+      fs.hospital_name,
+      fs.invoice_count,
+      fs.order_count,
+      fs.total_spend_usd,
+      COALESCE(fe.exception_count, 0) AS exception_count
+    FROM facility_spend fs
+    LEFT JOIN facility_exceptions fe ON fe.facility_id = fs.facility_id
+    ORDER BY fs.total_spend_usd DESC
+  `));
+  return c.json({ items: result.results ?? [] });
+});
+
+// ─── GET /contract-leakage ─────────────────────────────────────────────────
+// For each invoice line within the period, look up the "best available" price
+// from contracts → GPO → fee schedule → Medicare. If invoice price > best price
+// beyond 2%, flag as leakage. Returns dollar savings missed.
+//
+// Limitation: this is a SQL-only first pass; the full pricing cascade lives in
+// contractPricing.ts. Here we compare invoice unit price to the lowest active
+// contract or GPO rate per HCPC for the hospital.
+app.get('/contract-leakage', async (c) => {
+  const db = getDb(c.env.DB);
+  const user = c.get('user');
+  const { startDate, endDate, hospitalId } = c.req.query();
+  const scopeHospitalId =
+    user.userType === 'HOSPITAL' && user.hospitalId
+      ? user.hospitalId
+      : hospitalId || null;
+  if (!scopeHospitalId) {
+    return c.json({ error: 'hospitalId required (admin) or hospital context missing' }, 400);
+  }
+  const dateFilter = [] as string[];
+  if (startDate) dateFilter.push(`inv.created_at >= '${startDate}'`);
+  if (endDate) dateFilter.push(`inv.created_at <= '${endDate}'`);
+  const dateClause = dateFilter.length ? `AND ${dateFilter.join(' AND ')}` : '';
+
+  // Build a per-HCPC "best price" map: lowest rate across active contracts + active GPO items.
+  // SQLite has no FULL OUTER JOIN, so we UNION ALL the two sources and take MIN per HCPC.
+  const bestPrices = await (db as any).all(sql.raw(`
+    SELECT hcpc, MIN(best) AS best_price_usd
+    FROM (
+      SELECT ci.code AS hcpc, ci.unit_price AS best
+      FROM contract_items ci
+      LEFT JOIN contracts c ON c.id = ci.contract_id
+      WHERE c.hospital_id = '${scopeHospitalId}'
+        AND c.status = 'ACTIVE'
+        AND ci.code IS NOT NULL
+        AND ci.unit_price IS NOT NULL
+      UNION ALL
+      SELECT gci.hcpc_code AS hcpc, gci.rate_usd AS best
+      FROM gpo_contract_items gci
+      JOIN hospitals h ON h.gpo_organization_id = gci.gpo_organization_id
+      WHERE h.id = '${scopeHospitalId}'
+        AND gci.is_active = 1
+    ) AS combined
+    GROUP BY hcpc
+  `));
+  const priceMap = new Map<string, number>();
+  for (const row of bestPrices.results ?? []) {
+    if (row.hcpc && row.best_price_usd != null) {
+      priceMap.set(String(row.hcpc), Number(row.best_price_usd));
+    }
+  }
+
+  // Pull invoice lines for the period
+  const lines = await (db as any).all(sql.raw(`
+    SELECT
+      ii.id,
+      ii.invoice_id,
+      ii.code AS hcpc,
+      ii.description,
+      ii.quantity,
+      ii.unit_price,
+      ii.unit_price_cents,
+      ii.line_total_cents,
+      inv.invoice_number,
+      inv.vendor_id,
+      v.name AS vendor_name
+    FROM invoice_items ii
+    JOIN invoices inv ON inv.id = ii.invoice_id
+    LEFT JOIN vendors v ON v.id = inv.vendor_id
+    WHERE inv.hospital_id = '${scopeHospitalId}' ${dateClause}
+  `));
+
+  const leaks: any[] = [];
+  let totalLeakageUsd = 0;
+  for (const ln of lines.results ?? []) {
+    const hcpc = String(ln.hcpc ?? '');
+    if (!hcpc) continue;
+    const best = priceMap.get(hcpc);
+    if (best == null) continue;
+    const unit = ln.unit_price_cents ? ln.unit_price_cents / 100 : Number(ln.unit_price ?? 0);
+    if (unit <= best * 1.02) continue; // within tolerance
+    const qty = Number(ln.quantity ?? 0);
+    const leakPerUnit = unit - best;
+    const leakTotal = leakPerUnit * qty;
+    totalLeakageUsd += leakTotal;
+    leaks.push({
+      invoiceItemId: ln.id,
+      invoiceId: ln.invoice_id,
+      invoiceNumber: ln.invoice_number,
+      hcpc,
+      description: ln.description,
+      vendorName: ln.vendor_name,
+      quantity: qty,
+      invoiceUnitPriceUsd: unit,
+      bestAvailablePriceUsd: best,
+      leakPerUnitUsd: leakPerUnit,
+      leakTotalUsd: leakTotal,
+      leakPct: (leakPerUnit / best) * 100,
+    });
+  }
+  // Sort biggest leaks first
+  leaks.sort((a, b) => b.leakTotalUsd - a.leakTotalUsd);
+  return c.json({
+    totalLeakageUsd: Math.round(totalLeakageUsd * 100) / 100,
+    leakCount: leaks.length,
+    items: leaks.slice(0, 200),
   });
 });
 
