@@ -46,3 +46,9 @@ turnstile keys.txt
 
 # Local Claude Code state
 .claude/
+
+# Epic / EHR secret material — never commit
+epic-secret
+epic-secret.*
+.epic/
+*.client-secret

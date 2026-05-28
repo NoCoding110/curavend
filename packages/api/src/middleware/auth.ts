@@ -40,6 +40,12 @@ const PUBLIC_PREFIXES = [
 const PUBLIC_PATTERNS: RegExp[] = [
   // EHR ingest webhooks: /api/ehr/:connectionId/ingest — HMAC-protected per-connection
   /^\/api\/ehr\/[A-Za-z0-9-]+\/ingest$/,
+  // Epic OAuth callback — Epic redirects the user's browser here unauthenticated.
+  /^\/api\/fhir\/redirect$/,
+  // Epic EHR Launch entry — clinician arrives from chart with ?iss=&launch=, no JWT.
+  /^\/api\/fhir\/launch$/,
+  // JWKS endpoint for Backend Services JWT (Phase 2.L).
+  /^\/\.well-known\/jwks\.json$/,
 ];
 
 export const authMiddleware = (): MiddlewareHandler<{

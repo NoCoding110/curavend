@@ -157,7 +157,7 @@ export async function sweepComplianceAlerts(d1: D1Database): Promise<ComplianceS
 
   // ─── Auto-resolve stale alerts ─────────────────────────────────────────
   // When the underlying expiry date is now > 60 days out, mark resolved.
-  const stale = await (db as any).all(sql.raw(`
+  const stale = await db.run(sql.raw(`
     UPDATE compliance_alerts
     SET resolved_at = '${new Date().toISOString()}', updated_at = '${new Date().toISOString()}'
     WHERE resolved_at IS NULL

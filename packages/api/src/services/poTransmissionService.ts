@@ -20,6 +20,7 @@ import { eq } from 'drizzle-orm';
 import { getDb } from '../lib/db';
 import { purchaseOrders, purchaseOrderItems, poTransmissionLog, vendors } from '@curavend/db';
 import type { Env } from '../lib/env';
+import { safeFetch } from '../lib/safeFetch';
 import { postPoCommit } from './glService';
 
 export interface TransmitResult {
@@ -80,7 +81,7 @@ async function sendEdi850(payload: any): Promise<AdapterResult> {
   ];
   const body = segments.join('~\n');
   try {
-    const res = await fetch(vendor.poTransmissionEndpoint, {
+    const res = await safeFetch(vendor.poTransmissionEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/EDI-X12' },
       body,
@@ -120,7 +121,7 @@ async function sendApi(payload: any): Promise<AdapterResult> {
     })),
   });
   try {
-    const res = await fetch(vendor.poTransmissionEndpoint, {
+    const res = await safeFetch(vendor.poTransmissionEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -170,7 +171,7 @@ async function sendPunchout(payload: any): Promise<AdapterResult> {
   </Request>
 </cXML>`;
   try {
-    const res = await fetch(vendor.poTransmissionEndpoint, {
+    const res = await safeFetch(vendor.poTransmissionEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/xml' },
       body: cxml,

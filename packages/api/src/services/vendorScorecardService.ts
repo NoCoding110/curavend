@@ -37,7 +37,7 @@ export async function computeVendorScorecards(d1: D1Database): Promise<Scorecard
     const monthEnd = new Date(year, parseInt(period.slice(1)), 1).toISOString().slice(0, 10);
 
     // Aggregate per (vendor × hospital). hospital_id may be null on the PO.
-    const rows = await (db as any).all(sql.raw(`
+    const rows = await db.run(sql.raw(`
       SELECT
         po.vendor_id AS vendor_id,
         po.hospital_id AS hospital_id,

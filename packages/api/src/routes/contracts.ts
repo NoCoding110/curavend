@@ -33,6 +33,7 @@ import {
   users,
 } from '@curavend/db';
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors';
+import { stripImmutableFields } from '../lib/sanitizeBody';
 import {
   assertContractAccess,
   assertCanReviewContract,
@@ -384,7 +385,7 @@ app.put('/fee-schedules/:id/items/:itemId', async (c) => {
   if (!schedule.length) throw new NotFoundError('Fee schedule not found');
   assertFeeScheduleWriteAccess(user, schedule[0].vendorId);
 
-  const updatePayload: any = { ...body };
+  const updatePayload: any = { ...stripImmutableFields(body) };
   if (body.price !== undefined && body.rate === undefined) {
     updatePayload.rate = body.price;
     delete updatePayload.price;

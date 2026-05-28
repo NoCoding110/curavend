@@ -3,6 +3,7 @@ import { eq, desc, and, or, like, sql } from 'drizzle-orm';
 import { getDb } from '../lib/db';
 import { inventory, inventoryItems, inventoryLots, vendors } from '@curavend/db';
 import { NotFoundError, ValidationError } from '../lib/errors';
+import { stripImmutableFields } from '../lib/sanitizeBody';
 import type { Env } from '../lib/env';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: any } }>();
@@ -222,7 +223,7 @@ app.put('/:id', async (c) => {
 
   await db
     .update(inventory)
-    .set({ ...body, updatedAt: new Date().toISOString() })
+    .set({ ...stripImmutableFields(body), updatedAt: new Date().toISOString() })
     .where(eq(inventory.id, id));
 
   const result = await db
@@ -362,7 +363,7 @@ app.put('/:id/items/:itemId', async (c) => {
 
   // Sanitize item_type; block switching LOT→NON_LOT while lots exist (would
   // orphan stock). Switching NON_LOT→LOT is always fine.
-  const updates: any = { ...body };
+  const updates: any = { ...stripImmutableFields(body) };
   const providedType = normalizeItemType(body.itemType);
   if (providedType) {
     updates.itemType = providedType;

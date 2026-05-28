@@ -297,6 +297,15 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           icon: <TeamOutlined />,
           label: 'Physicians',
         },
+        {
+          // EHR Connections (Epic / Cerner / Meditech / …). Hospital admins
+          // wire their own EHR tenant in here. The backend RBAC scopes the
+          // returned rows to the caller's hospital_id, so non-platform admins
+          // only ever see their own connections.
+          key: '/admin/ehr-connections',
+          icon: <ApiOutlined />,
+          label: 'EHR Connections',
+        },
       );
     }
 
@@ -354,8 +363,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
 
     // ─── Admin-only ───────────────────────────────────────────────────────
     if (isAdmin) {
-      reportingChildren.push({ key: '/reporting/compliance/users', label: 'Compliance: Users' });
-      reportingChildren.push({ key: '/reporting/compliance/credentials', label: 'Compliance: Credentials' });
+      // Single-segment keys — match `/reporting/:reportId` route. Two-segment
+      // URLs (`compliance/users`) would fall through to the `*` catch-all
+      // and redirect to landing.
+      reportingChildren.push({ key: '/reporting/compliance-users', label: 'Compliance: Users' });
+      reportingChildren.push({ key: '/reporting/compliance-credentials', label: 'Compliance: Credentials' });
       reportingChildren.push({ key: '/reporting/unbilled-transactions', label: 'Unbilled Transactions' });
     }
 

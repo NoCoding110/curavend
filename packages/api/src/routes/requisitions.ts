@@ -92,8 +92,13 @@ app.get('/', requirePermission('requisitions', 'READ'), async (c) => {
   const { status, requesterId, approverId, priority, facilityId, departmentId, q } = c.req.query();
 
   const conds: any[] = [];
-  if (!isAdminRole(user) && user.hospitalId) {
-    conds.push(eq(requisitions.hospitalId, user.hospitalId));
+  if (!isAdminRole(user)) {
+    if (user.hospitalId) {
+      conds.push(eq(requisitions.hospitalId, user.hospitalId));
+    } else {
+      // Non-admin persona without a hospital tenant must see nothing.
+      conds.push(sql`1 = 0`);
+    }
   } else if (c.req.query('hospitalId')) {
     conds.push(eq(requisitions.hospitalId, c.req.query('hospitalId')!));
   }

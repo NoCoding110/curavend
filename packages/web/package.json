@@ -23,7 +23,7 @@
     "@types/react-resizable": "^3.0.8",
     "@types/react-signature-canvas": "^1.0.7",
     "antd": "^5.22.0",
-    "axios": "^1.7.0",
+    "axios": "^1.8.2",
     "country-state-city": "^3.2.0",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.0",

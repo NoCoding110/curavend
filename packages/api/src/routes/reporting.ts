@@ -693,6 +693,45 @@ app.get('/spend.xlsx', async (c) => {
   });
 });
 
+// ─── GET /spend-by-physician ───────────────────────────────────────────────
+// Sum invoice totals grouped by orders.physician_id (joined to users for name).
+// Hospital users see only their own hospital; admins can scope by hospitalId.
+app.get('/spend-by-physician', async (c) => {
+  const db = getDb(c.env.DB);
+  const user = c.get('user');
+  const { startDate, endDate, hospitalId } = c.req.query();
+
+  const scopeHospitalId =
+    user.userType === 'HOSPITAL' && user.hospitalId
+      ? user.hospitalId
+      : hospitalId || null;
+
+  const conditions: string[] = [`o.physician_id IS NOT NULL`];
+  if (scopeHospitalId) {
+    conditions.push(`o.hospital_id = '${scopeHospitalId.replace(/'/g, "''")}'`);
+  }
+  if (startDate) conditions.push(`inv.created_at >= '${startDate.replace(/'/g, "''")}'`);
+  if (endDate) conditions.push(`inv.created_at <= '${endDate.replace(/'/g, "''")}'`);
+  const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+  const result = await (db as any).run(sql.raw(`
+    SELECT
+      o.physician_id AS physician_id,
+      COALESCE(u.name, u.email, o.physician_id) AS physician_name,
+      COUNT(DISTINCT inv.id) AS invoice_count,
+      COUNT(DISTINCT o.id) AS order_count,
+      SUM(COALESCE(inv.total, 0)) AS total_spend
+    FROM orders o
+    INNER JOIN invoices inv ON inv.order_id = o.id
+    LEFT JOIN users u ON u.id = o.physician_id
+    ${whereClause}
+    GROUP BY o.physician_id
+    ORDER BY total_spend DESC
+    LIMIT 200
+  `));
+  return c.json({ items: result.results ?? [] });
+});
+
 // ─── GET /spend-by-facility ────────────────────────────────────────────────
 // Sum invoice line totals grouped by hospital_facilities (joined via orders.facility_id).
 // Hospital users see their own; admins can filter by hospitalId.
@@ -708,12 +747,12 @@ app.get('/spend-by-facility', async (c) => {
 
   // Build subquery using raw SQL for clarity given the join chain
   const dateFilter = [] as string[];
-  if (startDate) dateFilter.push(`inv.created_at >= '${startDate}'`);
-  if (endDate) dateFilter.push(`inv.created_at <= '${endDate}'`);
-  const hospitalFilter = scopeHospitalId ? `AND inv.hospital_id = '${scopeHospitalId}'` : '';
+  if (startDate) dateFilter.push(`inv.created_at >= '${startDate.replace(/'/g, "''")}'`);
+  if (endDate) dateFilter.push(`inv.created_at <= '${endDate.replace(/'/g, "''")}'`);
+  const hospitalFilter = scopeHospitalId ? `AND inv.hospital_id = '${scopeHospitalId.replace(/'/g, "''")}'` : '';
   const dateClause = dateFilter.length ? `AND ${dateFilter.join(' AND ')}` : '';
 
-  const result = await (db as any).all(sql.raw(`
+  const result = await (db as any).run(sql.raw(`
     SELECT
       COALESCE(f.id, 'unassigned') AS facility_id,
       COALESCE(f.name, 'Unassigned') AS facility_name,
@@ -744,13 +783,13 @@ app.get('/spend-by-department', async (c) => {
       : hospitalId || null;
 
   const dateFilter = [] as string[];
-  if (startDate) dateFilter.push(`inv.created_at >= '${startDate}'`);
-  if (endDate) dateFilter.push(`inv.created_at <= '${endDate}'`);
-  const hospitalFilter = scopeHospitalId ? `AND inv.hospital_id = '${scopeHospitalId}'` : '';
-  const facilityFilter = facilityId ? `AND o.facility_id = '${facilityId}'` : '';
+  if (startDate) dateFilter.push(`inv.created_at >= '${startDate.replace(/'/g, "''")}'`);
+  if (endDate) dateFilter.push(`inv.created_at <= '${endDate.replace(/'/g, "''")}'`);
+  const hospitalFilter = scopeHospitalId ? `AND inv.hospital_id = '${scopeHospitalId.replace(/'/g, "''")}'` : '';
+  const facilityFilter = facilityId ? `AND o.facility_id = '${facilityId.replace(/'/g, "''")}'` : '';
   const dateClause = dateFilter.length ? `AND ${dateFilter.join(' AND ')}` : '';
 
-  const result = await (db as any).all(sql.raw(`
+  const result = await (db as any).run(sql.raw(`
     SELECT
       COALESCE(d.id, 'unassigned') AS department_id,
       COALESCE(d.name, 'Unassigned') AS department_name,
@@ -778,13 +817,13 @@ app.get('/multi-site-rollup', async (c) => {
     user.userType === 'HOSPITAL' && user.hospitalId
       ? user.hospitalId
       : hospitalId || null;
-  const hospitalFilter = scopeHospitalId ? `AND inv.hospital_id = '${scopeHospitalId}'` : '';
+  const hospitalFilter = scopeHospitalId ? `AND inv.hospital_id = '${scopeHospitalId.replace(/'/g, "''")}'` : '';
   const dateFilter = [] as string[];
-  if (startDate) dateFilter.push(`inv.created_at >= '${startDate}'`);
-  if (endDate) dateFilter.push(`inv.created_at <= '${endDate}'`);
+  if (startDate) dateFilter.push(`inv.created_at >= '${startDate.replace(/'/g, "''")}'`);
+  if (endDate) dateFilter.push(`inv.created_at <= '${endDate.replace(/'/g, "''")}'`);
   const dateClause = dateFilter.length ? `AND ${dateFilter.join(' AND ')}` : '';
 
-  const result = await (db as any).all(sql.raw(`
+  const result = await (db as any).run(sql.raw(`
     WITH facility_spend AS (
       SELECT
         COALESCE(f.id, 'unassigned') AS facility_id,
@@ -840,36 +879,49 @@ app.get('/contract-leakage', async (c) => {
   const db = getDb(c.env.DB);
   const user = c.get('user');
   const { startDate, endDate, hospitalId } = c.req.query();
+
+  const isAdminUser =
+    user.role === 'ACCOUNT_MANAGER' || user.role === 'ACCOUNT_MANAGER_USER';
   const scopeHospitalId =
     user.userType === 'HOSPITAL' && user.hospitalId
       ? user.hospitalId
       : hospitalId || null;
-  if (!scopeHospitalId) {
-    return c.json({ error: 'hospitalId required (admin) or hospital context missing' }, 400);
+  // Hospital users must always have a hospital context. Admins may omit hospitalId
+  // to get a platform-wide aggregate view (used by the dashboard widget).
+  if (!scopeHospitalId && !isAdminUser) {
+    return c.json({ error: 'Hospital context missing' }, 400);
   }
+
   const dateFilter = [] as string[];
   if (startDate) dateFilter.push(`inv.created_at >= '${startDate}'`);
   if (endDate) dateFilter.push(`inv.created_at <= '${endDate}'`);
   const dateClause = dateFilter.length ? `AND ${dateFilter.join(' AND ')}` : '';
 
+  // Hospital-scoping clauses — empty string = platform-wide (admin aggregate).
+  const esc = (s: string) => s.replace(/'/g, "''");
+  const contractHospCond = scopeHospitalId ? `AND c.hospital_id = '${esc(scopeHospitalId)}'` : '';
+  const gpoHospCond      = scopeHospitalId ? `AND h.id = '${esc(scopeHospitalId)}'` : '';
+  const invoiceHospCond  = scopeHospitalId ? `AND inv.hospital_id = '${esc(scopeHospitalId)}'` : '';
+
   // Build a per-HCPC "best price" map: lowest rate across active contracts + active GPO items.
   // SQLite has no FULL OUTER JOIN, so we UNION ALL the two sources and take MIN per HCPC.
-  const bestPrices = await (db as any).all(sql.raw(`
+  const bestPrices = await (db as any).run(sql.raw(`
     SELECT hcpc, MIN(best) AS best_price_usd
     FROM (
-      SELECT ci.code AS hcpc, ci.unit_price AS best
+      -- contract_items uses hcpc_code + negotiated_rate (not code/unit_price).
+      SELECT ci.hcpc_code AS hcpc, ci.negotiated_rate AS best
       FROM contract_items ci
       LEFT JOIN contracts c ON c.id = ci.contract_id
-      WHERE c.hospital_id = '${scopeHospitalId}'
-        AND c.status = 'ACTIVE'
-        AND ci.code IS NOT NULL
-        AND ci.unit_price IS NOT NULL
+      WHERE c.status = 'ACTIVE'
+        ${contractHospCond}
+        AND ci.hcpc_code IS NOT NULL
+        AND ci.negotiated_rate IS NOT NULL
       UNION ALL
       SELECT gci.hcpc_code AS hcpc, gci.rate_usd AS best
       FROM gpo_contract_items gci
       JOIN hospitals h ON h.gpo_organization_id = gci.gpo_organization_id
-      WHERE h.id = '${scopeHospitalId}'
-        AND gci.is_active = 1
+      WHERE gci.is_active = 1
+        ${gpoHospCond}
     ) AS combined
     GROUP BY hcpc
   `));
@@ -881,7 +933,7 @@ app.get('/contract-leakage', async (c) => {
   }
 
   // Pull invoice lines for the period
-  const lines = await (db as any).all(sql.raw(`
+  const lines = await (db as any).run(sql.raw(`
     SELECT
       ii.id,
       ii.invoice_id,
@@ -891,13 +943,13 @@ app.get('/contract-leakage', async (c) => {
       ii.unit_price,
       ii.unit_price_cents,
       ii.line_total_cents,
-      inv.invoice_number,
+      inv.number AS invoice_number,
       inv.vendor_id,
       v.name AS vendor_name
     FROM invoice_items ii
     JOIN invoices inv ON inv.id = ii.invoice_id
     LEFT JOIN vendors v ON v.id = inv.vendor_id
-    WHERE inv.hospital_id = '${scopeHospitalId}' ${dateClause}
+    WHERE 1=1 ${invoiceHospCond} ${dateClause}
   `));
 
   const leaks: any[] = [];

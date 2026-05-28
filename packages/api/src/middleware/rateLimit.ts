@@ -58,9 +58,11 @@ export const rateLimit = (opts: RateLimitOptions = {}): MiddlewareHandler<{ Bind
       );
     }
 
-    // Write the new count; only set TTL on the first write so the window
-    // resets after `windowSeconds` from the *first* request in the window
-    await kv.put(bucketKey, String(count), raw ? undefined : { expirationTtl: windowSeconds });
+    // Always (re)set the TTL on write. A KV put without expirationTtl clears
+    // any prior TTL, which would make the bucket permanent and lock the IP out
+    // forever. Re-setting each time gives a sliding window from the last
+    // request — correct and safe for brute-force protection.
+    await kv.put(bucketKey, String(count), { expirationTtl: windowSeconds });
 
     await next();
   };

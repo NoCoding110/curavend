@@ -23,6 +23,7 @@ import {
   ForbiddenError,
 } from '../lib/errors';
 import type { Env } from '../lib/env';
+import { safeFetch } from '../lib/safeFetch';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 
@@ -243,7 +244,7 @@ async function runHttpPollConnector(
       if (secret) headers.Authorization = `Bearer ${secret}`;
     }
 
-    const resp = await fetch(conn.endpointUrl, {
+    const resp = await safeFetch(conn.endpointUrl, {
       headers,
       cf: { cacheTtl: 0 },
     } as any);

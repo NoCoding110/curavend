@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/cloudflare';
 import { Hono } from 'hono';
-import { logger } from 'hono/logger';
+import { secureHeaders } from 'hono/secure-headers';
 import type { Env } from './lib/env';
 import type { AuthUser } from './middleware/auth';
 import { corsMiddleware } from './middleware/cors';
@@ -108,7 +108,9 @@ import { handleKitLetterSync } from './cron/kitLetterSync';
 import { handleRentalBilling } from './cron/dmeRentalBilling';
 import { handleDmeposExpiry } from './cron/dmeposExpiry';
 import { handleLabAutoReplenishment, handleLabExpiration } from './cron/labReplenishment';
+import { handlePractitionerSync } from './cron/practitionerSync';
 import externalFulfillmentRoutes from './routes/externalFulfillment';
+import jwksRoutes from './routes/jwks';
 import workflowRoutes from './routes/workflows';
 import { sweepExpiredEventWaits } from './services/workflowService';
 import { runAllStockPolls } from './routes/vendorStockConnectors';
@@ -124,7 +126,35 @@ const app = new Hono<AppBindings>();
 
 // ─── Global Middleware ──────────────────────────────────────────────────────
 
-app.use('*', logger());
+// Request logger that records method + pathname + status only — never the
+// query string, which can carry patient identifiers (PHI) on search/list routes.
+app.use('*', async (c, next) => {
+  const start = Date.now();
+  await next();
+  const path = c.req.path; // pathname only, no query string
+  console.log(`${c.req.method} ${path} ${c.res.status} ${Date.now() - start}ms`);
+});
+// Security headers on every response. Cross-Origin-* policies are intentionally
+// disabled so the (different-origin) SPA can keep reading the API under CORS.
+app.use(
+  '*',
+  secureHeaders({
+    strictTransportSecurity: 'max-age=31536000; includeSubDomains; preload',
+    xContentTypeOptions: 'nosniff',
+    xFrameOptions: 'DENY',
+    referrerPolicy: 'no-referrer',
+    contentSecurityPolicy: {
+      defaultSrc: ["'none'"],
+      styleSrc: ["'unsafe-inline'"], // for the few inline-styled HTML responses (unsubscribe page)
+      frameAncestors: ["'none'"],
+      baseUri: ["'none'"],
+      formAction: ["'self'"],
+    },
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+  }),
+);
 app.use('*', async (c, next) => {
   const corsHandler = corsMiddleware(c.env.FRONTEND_URL);
   return corsHandler(c, next);
@@ -169,6 +199,11 @@ app.route('/api/stock-feeds', stockFeedRoutes);
 
 // External fulfillment vendor webhooks are public (HMAC-verified via shared secret)
 app.route('/api/external/fulfillment', externalFulfillmentRoutes);
+
+// JWKS for SMART Backend Services — public per RFC 7517. Customer's Epic admin
+// registers https://curavend-api.metabilityllc1.workers.dev/.well-known/jwks.json
+// once on the app config, then validates our client_assertion JWTs against it.
+app.route('/', jwksRoutes);
 
 // ─── Protected Routes (auth required) ───────────────────────────────────────
 
@@ -399,6 +434,17 @@ const workerHandler = {
               ),
               (err) => console.error('[cron] Compliance sweep failed:', err),
             ),
+          ),
+        );
+        // Nightly Epic Practitioner directory sync (Phase 2.N — Backend Services)
+        console.log('[cron] Running Epic Practitioner directory sync');
+        ctx.waitUntil(
+          handlePractitionerSync(env).then(
+            (r) =>
+              console.log(
+                `[cron] Practitioner sync: conns attempted=${r.connectionsAttempted} ok=${r.connectionsSucceeded} failed=${r.connectionsFailed} totalSynced=${r.totalPractitionersSynced}`,
+              ),
+            (err) => console.error('[cron] Practitioner sync failed:', err),
           ),
         );
         // Nightly vendor scorecard recompute (Procurement v3 gap J)

@@ -18,6 +18,7 @@ import { kitLetters } from '@curavend/db';
 import { getDb } from '../lib/db';
 import { uploadFile, buildStorageKey } from './storageService';
 import { guardedFetch } from '../lib/externalCallGate';
+import { assertPublicHttpUrl } from '../lib/safeFetch';
 import type { Env } from '../lib/env';
 
 export interface KitLetterSyncReport {
@@ -80,6 +81,7 @@ export async function syncKitLetters(
 
   let fetched: unknown;
   try {
+    assertPublicHttpUrl(url);
     const { response, gated } = await guardedFetch(env, url, { method: 'GET', headers });
     report.gated = gated;
     if (gated) return report;

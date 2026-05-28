@@ -309,7 +309,7 @@ export async function handleLabExpiration(env: Env): Promise<{
   const in90 = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   // Mark expired
-  const expiredRows = await (db as any).all(sql.raw(`
+  const expiredRows = await db.run(sql.raw(`
     SELECT id FROM lab_inventory_lots
     WHERE status = 'ACTIVE' AND expiration_date IS NOT NULL AND expiration_date < '${today}'
   `));
@@ -333,7 +333,7 @@ export async function handleLabExpiration(env: Env): Promise<{
 
   // Count windows for reporting
   const cnt = async (cutoff: string) => {
-    const r = await (db as any).all(sql.raw(`
+    const r = await db.run(sql.raw(`
       SELECT COUNT(*) AS n FROM lab_inventory_lots
       WHERE status = 'ACTIVE' AND expiration_date IS NOT NULL
       AND expiration_date <= '${cutoff}' AND expiration_date >= '${today}'

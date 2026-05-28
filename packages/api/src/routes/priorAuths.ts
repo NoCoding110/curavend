@@ -26,6 +26,7 @@ import {
 } from '@curavend/db';
 import { ValidationError, NotFoundError, ForbiddenError } from '../lib/errors';
 import { rbac } from '../middleware/rbac';
+import { logPhiAccess } from '../services/phiAuditService';
 import type { Env } from '../lib/env';
 import type { AuthUser } from '../middleware/auth';
 
@@ -54,6 +55,23 @@ const TRANSITIONS: Record<PriorAuthStatus, PriorAuthStatus[]> = {
   CANCELLED: [],
 };
 
+/**
+ * Object-level tenant guard. Prior auths are hospital-owned PHI.
+ * Platform admins / account managers see everything; every other persona is
+ * confined to their own hospital tenant. Throws NotFound (not Forbidden) on
+ * mismatch so the endpoint doesn't leak the existence of other tenants' rows.
+ */
+function assertPaAccess(caller: AuthUser, row: { hospitalId: string | null }) {
+  const isAdmin =
+    caller.userType === 'ADMIN' ||
+    caller.role === 'ACCOUNT_MANAGER' ||
+    caller.role === 'ACCOUNT_MANAGER_USER';
+  if (isAdmin) return;
+  if (!caller.hospitalId || row.hospitalId !== caller.hospitalId) {
+    throw new NotFoundError('Prior auth not found');
+  }
+}
+
 // ─── GET / ────────────────────────────────────────────────────────────────
 app.get('/', rbac(...MANAGER_OR_USER), async (c) => {
   const db = getDb(c.env.DB);
@@ -62,8 +80,15 @@ app.get('/', rbac(...MANAGER_OR_USER), async (c) => {
 
   const conds = [];
   // Tenant scoping: facility users only see their hospital's PAs.
-  if (caller.userType !== 'ADMIN' && caller.role !== 'ACCOUNT_MANAGER' && caller.role !== 'ACCOUNT_MANAGER_USER') {
-    if (caller.hospitalId) conds.push(eq(priorAuths.hospitalId, caller.hospitalId));
+  const isAdminCaller =
+    caller.userType === 'ADMIN' || caller.role === 'ACCOUNT_MANAGER' || caller.role === 'ACCOUNT_MANAGER_USER';
+  if (!isAdminCaller) {
+    if (caller.hospitalId) {
+      conds.push(eq(priorAuths.hospitalId, caller.hospitalId));
+    } else {
+      // Non-admin persona with no hospital tenant (e.g. vendor) sees nothing.
+      conds.push(sql`1 = 0`);
+    }
   }
   if (status && PRIOR_AUTH_STATUSES.includes(status as PriorAuthStatus)) {
     conds.push(eq(priorAuths.status, status));
@@ -165,15 +190,27 @@ app.post('/', rbac(...MANAGER_OR_USER), async (c) => {
 // ─── GET /:id ─────────────────────────────────────────────────────────────
 app.get('/:id', rbac(...MANAGER_OR_USER), async (c) => {
   const db = getDb(c.env.DB);
+  const caller = c.get('user');
   const { id } = c.req.param();
   const [row] = await db.select().from(priorAuths).where(eq(priorAuths.id, id)).limit(1);
   if (!row) throw new NotFoundError('Prior auth not found');
+  assertPaAccess(caller, row);
   const history = await db
     .select()
     .from(priorAuthHistory)
     .where(eq(priorAuthHistory.priorAuthId, id))
     .orderBy(desc(priorAuthHistory.createdAt));
   const [p] = await db.select().from(payors).where(eq(payors.id, row.payorId)).limit(1);
+  await logPhiAccess(c.env, {
+    userId: caller.id,
+    userEmail: caller.email,
+    userType: caller.userType,
+    resourceType: 'PRIOR_AUTH',
+    resourceId: id,
+    action: 'VIEW',
+    ipAddress: c.req.header('CF-Connecting-IP') ?? c.req.header('X-Forwarded-For') ?? undefined,
+    userAgent: c.req.header('User-Agent') ?? undefined,
+  });
   return c.json({ ...row, payor: p ?? null, history });
 });
 
@@ -195,6 +232,10 @@ app.patch('/:id', rbac(...MANAGER_OR_USER), async (c) => {
     authNumber: string | null;
     quantityApproved: number | null;
   }>;
+  const [existingPa] = await db.select().from(priorAuths).where(eq(priorAuths.id, id)).limit(1);
+  if (!existingPa) throw new NotFoundError('Prior auth not found');
+  assertPaAccess(caller, existingPa);
+
   const patch: Record<string, unknown> = { updatedAt: new Date().toISOString(), lastEditedBy: caller.id };
   if (body.payorMemberId != null) patch.payorMemberId = body.payorMemberId;
   if (body.payorGroupId !== undefined) patch.payorGroupId = body.payorGroupId;
@@ -231,6 +272,7 @@ app.post('/:id/transition', rbac(...MANAGER_OR_USER), async (c) => {
 
   const [row] = await db.select().from(priorAuths).where(eq(priorAuths.id, id)).limit(1);
   if (!row) throw new NotFoundError('Prior auth not found');
+  assertPaAccess(caller, row);
 
   const allowed = TRANSITIONS[row.status as PriorAuthStatus] ?? [];
   if (!allowed.includes(body.toStatus)) {
@@ -264,12 +306,14 @@ app.post('/:id/transition', rbac(...MANAGER_OR_USER), async (c) => {
 // Attach an R2 blob key to the PA's document list.
 app.post('/:id/documents', rbac(...MANAGER_OR_USER), async (c) => {
   const db = getDb(c.env.DB);
+  const caller = c.get('user');
   const { id } = c.req.param();
   const body = (await c.req.json()) as { blobKey?: string };
   if (!body.blobKey) throw new ValidationError('blobKey is required');
 
   const [row] = await db.select().from(priorAuths).where(eq(priorAuths.id, id)).limit(1);
   if (!row) throw new NotFoundError('Prior auth not found');
+  assertPaAccess(caller, row);
 
   const existing: string[] = row.documentBlobKeys ? JSON.parse(row.documentBlobKeys) : [];
   if (!existing.includes(body.blobKey)) existing.push(body.blobKey);

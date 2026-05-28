@@ -37,7 +37,7 @@ export async function forecastHospitalDemand(
     .toISOString().slice(0, 10);
 
   // Per (hcpc × month) sum of quantity. We keep month as YYYY-MM string.
-  const raw = await (db as any).all(sql.raw(`
+  const raw = await db.run(sql.raw(`
     SELECT
       oi.code AS hcpc_code,
       MIN(oi.description) AS description,

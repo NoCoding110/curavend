@@ -27,11 +27,12 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { PlusOutlined, LinkOutlined, ApiOutlined, CopyOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, LinkOutlined, ApiOutlined, CopyOutlined, ReloadOutlined, CheckCircleOutlined, DisconnectOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import dayjs from 'dayjs';
 import type { ColumnsType } from 'antd/es/table';
 import { get, post, patch, del } from '../../../api/client';
+import { fhirApi, type TokenStatus } from '../../../api/fhirContext';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -91,6 +92,64 @@ export const EhrConnections: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [logs, setLogs] = useState<IngestLog[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
+  /** Per-connection Epic token status — populated on demand for EPIC vendor rows. */
+  const [tokenStatuses, setTokenStatuses] = useState<Record<string, TokenStatus>>({});
+  /** SMART discovery result modal state. */
+  const [smartOpen, setSmartOpen] = useState(false);
+  const [smartLoading, setSmartLoading] = useState(false);
+  const [smartResult, setSmartResult] = useState<{ smart?: unknown; fhirBaseUrl?: string; error?: string } | null>(null);
+
+  /** Fetch Epic token status for every EPIC-vendor connection. */
+  const refreshTokenStatuses = async (rows: EhrConnection[]) => {
+    const epicRows = rows.filter((r) => r.vendor === 'EPIC');
+    const results = await Promise.allSettled(
+      epicRows.map((r) => fhirApi.tokenStatus(r.id).then((s) => [r.id, s] as const)),
+    );
+    const map: Record<string, TokenStatus> = {};
+    for (const r of results) {
+      if (r.status === 'fulfilled') {
+        const [id, s] = r.value;
+        map[id] = s;
+      }
+    }
+    setTokenStatuses(map);
+  };
+
+  /** Start OAuth — fetch the Epic auth URL and redirect the browser to it. */
+  const handleConnectEpic = async (conn: EhrConnection) => {
+    try {
+      const r = await fhirApi.authorizeUrl(conn.id);
+      window.location.href = r.url;
+    } catch (err: any) {
+      message.error(err?.response?.data?.error || 'Failed to start Epic OAuth — check connection config');
+    }
+  };
+
+  /** Disconnect the calling user's tokens for this connection. */
+  const handleDisconnectEpic = async (conn: EhrConnection) => {
+    try {
+      await del(`/fhir/disconnect?connectionId=${conn.id}`);
+      message.success('Disconnected from Epic');
+      void refreshTokenStatuses(list);
+    } catch (err: any) {
+      message.error(err?.response?.data?.error || 'Disconnect failed');
+    }
+  };
+
+  /** Show SMART discovery for the connection — diagnostic. */
+  const handleTestSmart = async (conn: EhrConnection) => {
+    setSmartOpen(true);
+    setSmartLoading(true);
+    setSmartResult(null);
+    try {
+      const r = await fhirApi.smartConfig(conn.id);
+      setSmartResult({ smart: r.smart, fhirBaseUrl: r.fhirBaseUrl });
+    } catch (err: any) {
+      setSmartResult({ error: err?.response?.data?.error || err?.message || 'Unknown' });
+    } finally {
+      setSmartLoading(false);
+    }
+  };
 
   const fetchList = async () => {
     setLoading(true);
@@ -98,6 +157,7 @@ export const EhrConnections: React.FC = () => {
       const r = await get<{ items: EhrConnection[] }>('/ehr/connections');
       setList(r.items);
       if (!selectedId && r.items.length > 0) setSelectedId(r.items[0].id);
+      void refreshTokenStatuses(r.items);
     } catch (err: any) {
       message.error(err?.response?.data?.error || 'Failed to load connections');
     } finally {
@@ -277,6 +337,38 @@ export const EhrConnections: React.FC = () => {
                       Last success: {dayjs(conn.lastSuccessAt).format('YYYY-MM-DD HH:mm')}
                     </Text>
                   )}
+                  {conn.vendor === 'EPIC' && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      {tokenStatuses[conn.id]?.connected ? (
+                        <Space size={4} wrap>
+                          <Tag color="green" icon={<CheckCircleOutlined />}>
+                            Connected to Epic
+                            {tokenStatuses[conn.id].expiresInSeconds != null && (
+                              <> · {Math.floor((tokenStatuses[conn.id].expiresInSeconds ?? 0) / 60)}m left</>
+                            )}
+                          </Tag>
+                          <Button size="small" onClick={() => handleConnectEpic(conn)}>
+                            Reconnect
+                          </Button>
+                          <Button size="small" icon={<DisconnectOutlined />} onClick={() => handleDisconnectEpic(conn)}>
+                            Disconnect
+                          </Button>
+                          <Button size="small" icon={<ThunderboltOutlined />} onClick={() => handleTestSmart(conn)}>
+                            SMART config
+                          </Button>
+                        </Space>
+                      ) : (
+                        <Space size={4} wrap>
+                          <Button size="small" type="primary" icon={<LinkOutlined />} onClick={() => handleConnectEpic(conn)}>
+                            Connect to Epic
+                          </Button>
+                          <Button size="small" icon={<ThunderboltOutlined />} onClick={() => handleTestSmart(conn)}>
+                            SMART config
+                          </Button>
+                        </Space>
+                      )}
+                    </div>
+                  )}
                 </Space>
               </Card>
             ))}
@@ -361,6 +453,36 @@ export const EhrConnections: React.FC = () => {
           )}
         </Col>
       </Row>
+
+      {/* SMART discovery diagnostic modal */}
+      <Drawer
+        open={smartOpen}
+        title="SMART configuration"
+        onClose={() => setSmartOpen(false)}
+        width={560}
+      >
+        {smartLoading ? (
+          <Alert type="info" message="Loading SMART configuration…" />
+        ) : smartResult?.error ? (
+          <Alert type="error" showIcon message="Discovery failed" description={smartResult.error} />
+        ) : smartResult?.smart ? (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Alert
+              type="success"
+              showIcon
+              message="SMART discovery successful"
+              description={
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Source: {smartResult.fhirBaseUrl}/.well-known/smart-configuration
+                </Text>
+              }
+            />
+            <pre style={{ background: '#f5f5f5', padding: 12, fontSize: 11, overflow: 'auto', maxHeight: 540 }}>
+              {JSON.stringify(smartResult.smart, null, 2)}
+            </pre>
+          </Space>
+        ) : null}
+      </Drawer>
 
       {/* Create drawer */}
       <Drawer

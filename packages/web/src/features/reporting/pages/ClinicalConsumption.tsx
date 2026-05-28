@@ -2,7 +2,7 @@
  * Clinical consumption rollup — cost per encounter / department / provider.
  */
 import React, { useEffect, useState } from 'react';
-import { Button, Card, Col, Row, Segmented, Space, Table, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, Row, Segmented, Space, Table, Typography, message } from 'antd';
 import { MedicineBoxOutlined, ReloadOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { get } from '../../../api/client';
@@ -14,20 +14,28 @@ const ClinicalConsumptionPage: React.FC = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [groupBy, setGroupBy] = useState<string>('encounter');
+  const [forbidden, setForbidden] = useState(false);
 
   const load = async () => {
     setLoading(true);
+    setForbidden(false);
     try {
       const r = await get<any>(`/reporting/clinical-consumption?groupBy=${groupBy}`);
       setRows(r.items ?? []);
     } catch (err: any) {
-      message.error(err?.response?.data?.error ?? 'Failed');
+      if (err?.response?.status === 403) { setForbidden(true); }
+      else { message.error(err?.response?.data?.error ?? 'Failed'); }
     } finally { setLoading(false); }
   };
   useEffect(() => { void load(); }, [groupBy]);
 
   return (
     <PageWrap>
+      {forbidden && (
+        <Alert type="warning" showIcon style={{ marginBottom: 16 }}
+          message="Hospital context required"
+          description="This report is scoped to a single hospital. Your account has no default hospital — contact your administrator or select a hospital in the top bar." />
+      )}
       <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
         <Col>
           <Title level={3} style={{ margin: 0 }}>

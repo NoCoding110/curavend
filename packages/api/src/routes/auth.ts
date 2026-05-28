@@ -128,7 +128,7 @@ const refreshSchema = z.object({
 
 // ─── POST /auth/login ───────────────────────────────────────────────────────
 
-authRoutes.post('/login', turnstile(), async (c) => {
+authRoutes.post('/login', turnstile(), rateLimit({ limit: 10, windowSeconds: 300, prefix: 'rl:login' }), async (c) => {
   const body = await c.req.json();
   const parsed = loginSchema.safeParse(body);
   if (!parsed.success) {
@@ -658,7 +658,7 @@ authRoutes.post('/forgot-password', turnstile(), rateLimit({ limit: 5, windowSec
 
 // ─── POST /auth/reset-password ──────────────────────────────────────────────
 
-authRoutes.post('/reset-password', turnstile(), async (c) => {
+authRoutes.post('/reset-password', turnstile(), rateLimit({ limit: 10, windowSeconds: 900, prefix: 'rl:reset' }), async (c) => {
   const body = await c.req.json();
   const parsed = resetPasswordSchema.safeParse(body);
   if (!parsed.success) {
@@ -696,6 +696,13 @@ authRoutes.post('/reset-password', turnstile(), async (c) => {
 
   // Delete the used code
   await c.env.KV.delete(`reset:${user.id}`);
+
+  // Revoke all existing refresh tokens for this user (issued before now).
+  const kv = c.env.KV;
+  if (kv) {
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    await kv.put(`revoked-user:${user.id}`, String(nowEpoch), { expirationTtl: 604800 });
+  }
 
   void logAuthEvent(c.env, { event: 'PASSWORD_RESET_COMPLETED', userId: user.id, userEmail: user.email, ipAddress: getClientIp(c), userAgent: c.req.header('User-Agent') });
 
@@ -813,6 +820,20 @@ authRoutes.post('/refresh', async (c) => {
     throw new UnauthorizedError('Invalid refresh token');
   }
 
+  // Per-user refresh-token revocation epoch (set on logout / password reset).
+  // If the token was issued before the stored epoch, it has been revoked.
+  const kv = c.env.KV;
+  if (kv) {
+    const revokedAfter = await kv.get(`revoked-user:${userId}`);
+    if (revokedAfter) {
+      const epoch = Number(revokedAfter);
+      const iat = typeof payload.iat === 'number' ? payload.iat : 0;
+      if (Number.isFinite(epoch) && iat < epoch) {
+        throw new AppError(401, 'Refresh token has been revoked', 'TOKEN_REVOKED');
+      }
+    }
+  }
+
   const user = await db.select().from(users).where(eq(users.id, userId)).limit(1).then(r => r[0] ?? null);
 
   if (!user || user.userStatus !== 'ACTIVE') {
@@ -836,6 +857,26 @@ authRoutes.post('/refresh', async (c) => {
   );
 
   return c.json(tokens);
+});
+
+// ─── POST /auth/logout ──────────────────────────────────────────────────────
+// Server-side logout: revoke all of this user's existing refresh tokens by
+// stamping a per-user "tokens valid after" epoch in KV. Any refresh token
+// issued before this instant will be rejected by /auth/refresh.
+
+authRoutes.post('/logout', async (c) => {
+  // authRoutes mounts before the global auth middleware, so c.get('user') is
+  // not populated here — verify the bearer token inline like the other
+  // authenticated auth routes (change-password, etc.).
+  const authUser = await requireAuth(c);
+
+  const kv = c.env.KV;
+  if (kv) {
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    await kv.put(`revoked-user:${authUser.id}`, String(nowEpoch), { expirationTtl: 604800 });
+  }
+
+  return c.json({ message: 'Logged out successfully' });
 });
 
 // ─── Email OTP MFA ─────────────────────────────────────────────────────────

@@ -24,6 +24,7 @@ import { startWorkflow, getWorkflowStatus } from '../services/workflowService';
 import { autoConsumeForLabOrder } from '../services/labInventoryService';
 import { downloadFile } from '../services/storageService';
 import { generateLabOrderTrackingReport, XLSX_CONTENT_TYPE } from '../services/xlsxService';
+import { logPhiAccess } from '../services/phiAuditService';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -354,6 +355,16 @@ app.get('/orders/:id', async (c) => {
     throw new ForbiddenError('Access denied');
   }
   const items = await db.select().from(labOrderItems).where(eq(labOrderItems.labOrderId, id));
+  await logPhiAccess(c.env, {
+    userId: user.id,
+    userEmail: user.email,
+    userType: user.userType,
+    resourceType: 'LAB_ORDER',
+    resourceId: id,
+    action: 'VIEW',
+    ipAddress: c.req.header('CF-Connecting-IP') ?? c.req.header('X-Forwarded-For') ?? undefined,
+    userAgent: c.req.header('User-Agent') ?? undefined,
+  });
   return c.json({ data: { ...ord, items } });
 });
 

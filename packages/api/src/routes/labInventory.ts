@@ -709,7 +709,7 @@ app.post('/backfill', async (c) => {
   // Find candidate lab_orders within window that have no related
   // lab_stock_movements (i.e., never auto-consumed). We approximate
   // "no consumption" via NOT EXISTS in the movements table.
-  const candidates = await (db as any).all(sql.raw(`
+  const candidates = await db.run(sql.raw(`
     SELECT lo.id, lo.kit_site_id, lo.lab_group_id, lo.created_at
     FROM lab_orders lo
     WHERE lo.created_at >= '${cutoff.replace(/'/g, "''")}'
@@ -739,7 +739,7 @@ app.post('/backfill', async (c) => {
   const results: Array<{ labOrderId: string; ok: boolean; attempted: number; fullyIssued: number; shortages: number; error?: string }> = [];
   for (const row of rows) {
     try {
-      const items = await (db as any).all(sql.raw(`
+      const items = await db.run(sql.raw(`
         SELECT test_code, quantity FROM lab_order_items
         WHERE lab_order_id = '${row.id.replace(/'/g, "''")}'
           AND test_code IS NOT NULL

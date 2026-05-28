@@ -3,6 +3,7 @@ import { eq, like, desc, asc, sql, and } from 'drizzle-orm';
 import { getDb } from '../lib/db';
 import { vendors } from '@curavend/db';
 import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors';
+import { stripImmutableFields } from '../lib/sanitizeBody';
 import { EmailService } from '../services/emailService';
 import { requirePermission } from '../middleware/requirePermission';
 import type { Env } from '../lib/env';
@@ -103,7 +104,7 @@ app.post('/', async (c) => {
 
   await db.insert(vendors).values({
     id,
-    ...body,
+    ...stripImmutableFields(body),
     modifiedOrders: 0,
     inProcessOrders: 0,
     cancelledOrders: 0,
@@ -145,7 +146,7 @@ app.put('/:id', async (c) => {
 
   await db
     .update(vendors)
-    .set({ ...body, updatedAt: new Date().toISOString() })
+    .set({ ...stripImmutableFields(body), updatedAt: new Date().toISOString() })
     .where(eq(vendors.id, id));
 
   const result = await db

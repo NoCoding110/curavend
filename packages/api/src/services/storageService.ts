@@ -73,14 +73,25 @@ export function getProxiedUrl(baseUrl: string, key: string): string {
 
 /**
  * Build a unique storage key with a timestamp prefix to prevent overwrites.
+ *
+ * Optionally accepts a `tenantPrefix` (e.g. a hospitalId / vendorId) which,
+ * when provided, is sanitized and prepended as a top-level scope segment.
+ * This only affects NEW keys; existing reads use keys already persisted in
+ * the DB, so omitting it preserves the original behavior (backward compatible).
  */
 export function buildStorageKey(
   folder: string,
   filename: string,
+  tenantPrefix?: string,
 ): string {
   const timestamp = Date.now();
   const sanitized = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-  return `${folder}/${timestamp}-${sanitized}`;
+  const base = `${folder}/${timestamp}-${sanitized}`;
+  if (tenantPrefix) {
+    const scope = tenantPrefix.replace(/[^a-zA-Z0-9._-]/g, '_');
+    return `${scope}/${base}`;
+  }
+  return base;
 }
 
 /**

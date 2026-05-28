@@ -14,15 +14,18 @@ const PriceVariancePage: React.FC = () => {
   const [items, setItems] = useState<any[]>([]);
   const [rollup, setRollup] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
 
   const load = async () => {
     setLoading(true);
+    setForbidden(false);
     try {
       const r = await get<any>('/reporting/price-variance');
       setItems(r.items ?? []);
       setRollup(r.rollup ?? []);
     } catch (err: any) {
-      message.error(err?.response?.data?.error ?? 'Failed');
+      if (err?.response?.status === 403) { setForbidden(true); }
+      else { message.error(err?.response?.data?.error ?? 'Failed'); }
     } finally { setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
@@ -32,6 +35,11 @@ const PriceVariancePage: React.FC = () => {
 
   return (
     <PageWrap>
+      {forbidden && (
+        <Alert type="warning" showIcon style={{ marginBottom: 16 }}
+          message="Hospital context required"
+          description="This report is scoped to a single hospital. Your account has no default hospital — contact your administrator or select a hospital in the top bar." />
+      )}
       <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
         <Col>
           <Title level={3} style={{ margin: 0 }}>

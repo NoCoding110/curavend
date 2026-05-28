@@ -49,6 +49,7 @@ import { DmeDocPacket } from '../components/DmeDocPacket';
 import { DmeRentalSchedule } from '../components/DmeRentalSchedule';
 import { LcdCheckHistory } from '../components/LcdCheckHistory';
 import { BackordersPanel } from '../components/BackordersPanel';
+import ViewInEpicButton from '../components/ViewInEpicButton';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -733,6 +734,12 @@ const SupplyOrderDetail: React.FC = () => {
                   From {sourceReq.requisitionNumber}
                 </Tag>
               )}
+              <ViewInEpicButton
+                connectionId={order?.epicConnectionId}
+                patientId={order?.fhirPatientId}
+                encounterId={order?.fhirEncounterId}
+                size="small"
+              />
             </Space>
           </Col>
           <Col>{renderActionButtons()}</Col>

@@ -11,9 +11,32 @@ import type { Env } from '../lib/env';
 
 const app = new Hono<{ Bindings: Env }>();
 
+/** Stripe webhook tolerance: reject events whose signed timestamp is older
+ * than this (replay protection). Stripe's own SDK default is 300s. */
+const WEBHOOK_TOLERANCE_SECONDS = 300;
+
+/**
+ * Constant-time string comparison. Avoids leaking signature bytes via the
+ * early-exit timing of `===`. Returns false for length mismatch (after doing
+ * comparable work to keep timing roughly uniform).
+ */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ab = enc.encode(a);
+  const bb = enc.encode(b);
+  // Compare against whichever buffer keeps the loop length data-independent.
+  const len = Math.max(ab.length, bb.length);
+  let diff = ab.length ^ bb.length;
+  for (let i = 0; i < len; i++) {
+    diff |= (ab[i] ?? 0) ^ (bb[i] ?? 0);
+  }
+  return diff === 0;
+}
+
 /**
  * Verify Stripe webhook signature using the Web Crypto API
- * (Cloudflare Workers do not have Node.js crypto).
+ * (Cloudflare Workers do not have Node.js crypto). Enforces both the HMAC
+ * signature (constant-time) and the ±tolerance timestamp (replay protection).
  */
 async function verifyStripeSignature(
   body: string,
@@ -27,6 +50,13 @@ async function verifyStripeSignature(
   if (!tPart || !v1Parts.length) return false;
 
   const timestamp = tPart.slice(2);
+  // Replay protection: reject stale/forged timestamps.
+  const ts = parseInt(timestamp, 10);
+  const now = Math.floor(Date.now() / 1000);
+  if (Number.isNaN(ts) || Math.abs(now - ts) > WEBHOOK_TOLERANCE_SECONDS) {
+    console.warn('[stripe webhook] timestamp outside tolerance');
+    return false;
+  }
   const signedPayload = `${timestamp}.${body}`;
 
   const enc = new TextEncoder();
@@ -42,21 +72,22 @@ async function verifyStripeSignature(
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 
-  return v1Parts.some((p) => p.slice(3) === computed);
+  return v1Parts.some((p) => timingSafeEqualStr(p.slice(3), computed));
 }
 
 app.post('/stripe', async (c) => {
   const rawBody = await c.req.text();
   const sigHeader = c.req.header('stripe-signature') ?? '';
 
-  if (c.env.STRIPE_WEBHOOK_SECRET) {
-    const valid = await verifyStripeSignature(rawBody, sigHeader, c.env.STRIPE_WEBHOOK_SECRET);
-    if (!valid) {
-      console.warn('[stripe webhook] Invalid signature');
-      return c.json({ error: 'Invalid signature' }, 400);
-    }
-  } else {
-    console.log('[stripe webhook] STRIPE_WEBHOOK_SECRET not set — skipping signature verification');
+  if (!c.env.STRIPE_WEBHOOK_SECRET) {
+    // Fail closed: never process unverified webhook events.
+    console.error('[stripe webhook] STRIPE_WEBHOOK_SECRET not set — rejecting');
+    return c.json({ error: 'Webhook not configured' }, 503);
+  }
+  const valid = await verifyStripeSignature(rawBody, sigHeader, c.env.STRIPE_WEBHOOK_SECRET);
+  if (!valid) {
+    console.warn('[stripe webhook] Invalid signature');
+    return c.json({ error: 'Invalid signature' }, 400);
   }
 
   let event: { type: string; data: { object: any } };
@@ -243,7 +274,7 @@ async function verifySvixSignature(
     .map((s) => s.trim())
     .filter((s) => s.startsWith('v1,'))
     .map((s) => s.slice(3));
-  return sigs.some((s) => s === computedB64);
+  return sigs.some((s) => timingSafeEqualStr(s, computedB64));
 }
 
 // ─── POST /webhooks/resend — Resend delivery / bounce / complaint events ──
@@ -258,18 +289,19 @@ async function verifySvixSignature(
 app.post('/resend', async (c) => {
   const rawBody = await c.req.text();
   const expectedSecret = (c.env as any).RESEND_WEBHOOK_SECRET;
-  if (expectedSecret) {
-    const valid = await verifySvixSignature(rawBody, {
-      id: c.req.header('svix-id') ?? '',
-      timestamp: c.req.header('svix-timestamp') ?? '',
-      signature: c.req.header('svix-signature') ?? '',
-    }, expectedSecret);
-    if (!valid) {
-      console.warn('[resend webhook] invalid signature');
-      return c.json({ error: 'Invalid signature' }, 401);
-    }
-  } else {
-    console.log('[resend webhook] RESEND_WEBHOOK_SECRET not set — skipping signature verification (dev only)');
+  if (!expectedSecret) {
+    // Fail closed: never process unverified webhook events.
+    console.error('[resend webhook] RESEND_WEBHOOK_SECRET not set — rejecting');
+    return c.json({ error: 'Webhook not configured' }, 503);
+  }
+  const valid = await verifySvixSignature(rawBody, {
+    id: c.req.header('svix-id') ?? '',
+    timestamp: c.req.header('svix-timestamp') ?? '',
+    signature: c.req.header('svix-signature') ?? '',
+  }, expectedSecret);
+  if (!valid) {
+    console.warn('[resend webhook] invalid signature');
+    return c.json({ error: 'Invalid signature' }, 401);
   }
 
   let event: any;

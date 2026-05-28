@@ -2,7 +2,7 @@
  * Hospital demand forecast (12-month trailing + seasonality projection).
  */
 import React, { useEffect, useState } from 'react';
-import { Button, Card, Col, Row, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, Row, Space, Table, Tag, Typography, message } from 'antd';
 import { LineChartOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { get, post } from '../../../api/client';
@@ -23,15 +23,18 @@ const HospitalForecastPage: React.FC = () => {
   const [meta, setMeta] = useState<{ runAt: string; cached: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
 
   const load = async () => {
     setLoading(true);
+    setForbidden(false);
     try {
       const r = await get<any>('/reporting/hospital-forecast');
       setRows(r.items ?? []);
       setMeta({ runAt: r.runAt, cached: r.cached });
     } catch (err: any) {
-      message.error(err?.response?.data?.error ?? 'Failed');
+      if (err?.response?.status === 403) { setForbidden(true); }
+      else { message.error(err?.response?.data?.error ?? 'Failed'); }
     } finally { setLoading(false); }
   };
   useEffect(() => { void load(); }, []);

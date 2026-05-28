@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store/store';
 import {
@@ -38,6 +38,9 @@ import { get, post } from '../../../api/client';
 import { customerPurchaseOrdersApi, type CustomerPurchaseOrder } from '../../../api/customerPurchaseOrders';
 import { useResizableColumns } from '../../../components/table/useResizableColumns';
 import RoutingPickerCell from '../components/RoutingPickerCell';
+import { useFhirLaunchContext } from '../../../hooks/useFhirLaunchContext';
+import { fhirApi, type LaunchContextPrefill } from '../../../api/fhirContext';
+import FromEpicBadge from '../components/FromEpicBadge';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -165,6 +168,14 @@ const CreateSupplyOrder: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<number>(draft?.currentStep ?? 0);
   const [patientForm] = Form.useForm();
   const [orderForm] = Form.useForm();
+  const [searchParams] = useSearchParams();
+  const fhirCtx = useFhirLaunchContext();
+  /** Epic FHIR pre-fill state — null until launch context resolves. */
+  const [epicPrefill, setEpicPrefill] = useState<{
+    status: 'idle' | 'loading' | 'loaded' | 'error';
+    data?: LaunchContextPrefill;
+    error?: string;
+  }>({ status: 'idle' });
   const [loading, setLoading] = useState(false);
   const [hospitalsLoading, setHospitalsLoading] = useState(false);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
@@ -432,6 +443,76 @@ const CreateSupplyOrder: React.FC = () => {
       setSavedOrder((prev) => ({ ...prev, physicianId: userData.id }));
     }
   }, [userData?.hospitalId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Epic FHIR pre-fill (Phase 1.F) ──────────────────────────────────────
+  // Fires once on mount when the wizard was opened with ?fhirContext=1 (set
+  // by FhirLaunchBounce after a successful Epic OAuth round trip).
+  // Pulls patient + active encounter + coverage + conditions and seeds the
+  // patient + order forms. Existing draft sessionStorage is overwritten — Epic
+  // is the source of truth in this code path.
+  useEffect(() => {
+    const wantsFhir = searchParams.get('fhirContext') === '1';
+    if (!wantsFhir || !fhirCtx.isFromEpic || !fhirCtx.patientId) return;
+    let cancelled = false;
+    setEpicPrefill({ status: 'loading' });
+    (async () => {
+      try {
+        const data = await fhirApi.launchContextPrefill(
+          fhirCtx.connId,
+          fhirCtx.patientId!,
+          fhirCtx.encounterId,
+          fhirCtx.fhirUser,
+        );
+        if (cancelled) return;
+        // Map Epic shapes onto the patient form's field names.
+        const p = data.patient;
+        if (p) {
+          patientForm.setFieldsValue({
+            firstName: p.given.join(' '),
+            lastName: p.family,
+            gender:
+              p.gender === 'male' ? 'Male'
+                : p.gender === 'female' ? 'Female'
+                : p.gender ? 'Other' : undefined,
+            birthDate: p.dob ? dayjs(p.dob) : undefined,
+            email: p.email,
+            phone: p.phone,
+            address: p.address
+              ? [
+                  ...(p.address.line ?? []),
+                  p.address.city,
+                  p.address.state,
+                  p.address.postalCode,
+                ].filter(Boolean).join(', ')
+              : undefined,
+          });
+        }
+        // Pre-fill diagnosis from first active ICD-10 condition.
+        const firstIcd = data.conditions.find((c) => c.icd10);
+        if (firstIcd) {
+          patientForm.setFieldsValue({
+            icd10Code: firstIcd.icd10,
+            diagnosis: firstIcd.displayText,
+          });
+        }
+        // Pre-fill insurance from primary coverage.
+        const primary = data.coverages[0];
+        if (primary) {
+          orderForm.setFieldsValue({
+            insurance: primary.payorName,
+            insuranceId: primary.memberId,
+          });
+        }
+        setEpicPrefill({ status: 'loaded', data });
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        setEpicPrefill({ status: 'error', error: msg });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fhirCtx.isFromEpic, fhirCtx.patientId]);
 
   // Restore form values when navigating back to a step (or on first load after refresh)
   useEffect(() => {
@@ -755,6 +836,38 @@ const CreateSupplyOrder: React.FC = () => {
   };
 
   const renderPatientInfo = () => (
+    <>
+      {epicPrefill.status !== 'idle' && (
+        <Alert
+          type={
+            epicPrefill.status === 'loaded' ? 'success'
+              : epicPrefill.status === 'error' ? 'error'
+              : 'info'
+          }
+          showIcon
+          style={{ marginBottom: 12 }}
+          message={
+            <Space>
+              <FromEpicBadge inline />
+              {epicPrefill.status === 'loading' && <Text>Pulling patient context from Epic…</Text>}
+              {epicPrefill.status === 'loaded' && epicPrefill.data?.patient && (
+                <Text>
+                  Pre-filled from Epic: <Text strong>{epicPrefill.data.patient.name}</Text>
+                  {epicPrefill.data.coverages[0] && (
+                    <> · coverage: <Text>{epicPrefill.data.coverages[0].payorName}</Text></>
+                  )}
+                  {epicPrefill.data.conditions.find((c) => c.icd10) && (
+                    <> · dx: <Text>{epicPrefill.data.conditions.find((c) => c.icd10)?.icd10}</Text></>
+                  )}
+                </Text>
+              )}
+              {epicPrefill.status === 'error' && (
+                <Text type="danger">Epic pre-fill failed: {epicPrefill.error}</Text>
+              )}
+            </Space>
+          }
+        />
+      )}
     <FormCard title="Patient Information">
       <Form form={patientForm} layout="vertical">
         <Row gutter={16}>
@@ -864,6 +977,7 @@ const CreateSupplyOrder: React.FC = () => {
         </Row>
       </Form>
     </FormCard>
+    </>
   );
 
   const renderOrderDetails = () => (

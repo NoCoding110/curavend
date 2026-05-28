@@ -16,6 +16,7 @@ import { pointOfUseEvents, labInventoryLots } from '@curavend/db';
 import { ValidationError, ForbiddenError, NotFoundError } from '../lib/errors';
 import { requirePermission } from '../middleware/requirePermission';
 import { recordMovement } from '../services/labInventoryService';
+import { logPhiAccess } from '../services/phiAuditService';
 import type { Env } from '../lib/env';
 import type { AuthUser } from '../middleware/auth';
 
@@ -147,6 +148,16 @@ app.get('/', requirePermission('point-of-use', 'READ'), async (c) => {
     .where(conds.length ? and(...conds) : undefined)
     .orderBy(desc(pointOfUseEvents.capturedAt))
     .limit(cap);
+  await logPhiAccess(c.env, {
+    userId: user.id,
+    userEmail: user.email,
+    userType: user.userType,
+    resourceType: 'POINT_OF_USE',
+    resourceId: 'pou-list',
+    action: 'VIEW',
+    ipAddress: c.req.header('CF-Connecting-IP') ?? c.req.header('X-Forwarded-For') ?? undefined,
+    userAgent: c.req.header('User-Agent') ?? undefined,
+  });
   return c.json({ items: rows });
 });
 

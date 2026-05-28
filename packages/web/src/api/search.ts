@@ -1,4 +1,4 @@
-import { get } from './client';
+import { post } from './client';
 
 export type SearchEntityType = 'orders' | 'skus' | 'contracts';
 
@@ -15,8 +15,10 @@ export interface SearchResponse {
 }
 
 export const searchApi = {
+  // POST keeps the search term (which may be a patient name / PHI) out of the
+  // URL query string, so it never lands in access logs, history, or referrers.
   query: (q: string, types?: SearchEntityType[], limit: number = 20) =>
-    get<SearchResponse>('/search', {
+    post<SearchResponse>('/search', {
       q,
       types: types?.join(','),
       limit,

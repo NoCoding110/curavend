@@ -34,6 +34,7 @@ import {
   vendorItemSkus,
 } from '@curavend/db';
 import { getDb } from '../lib/db';
+import { assertPublicHttpUrl } from '../lib/safeFetch';
 import {
   applyFieldMap,
   truncateForLog,
@@ -248,6 +249,7 @@ export async function pushOrderToErp(
       let attemptError: string | null = null;
 
       try {
+        assertPublicHttpUrl(conn.endpointUrl);
         const ctrl = new AbortController();
         const timeoutId = setTimeout(() => ctrl.abort(), SOFT_TIMEOUT_MS);
         const resp = await fetch(conn.endpointUrl, {

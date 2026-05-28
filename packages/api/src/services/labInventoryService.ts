@@ -298,7 +298,7 @@ export async function getSiteSummary(
   if (args.labGroupId) filters.push(`lc.lab_group_id = '${args.labGroupId.replace(/'/g, "''")}'`);
   if (args.category) filters.push(`lc.category = '${args.category.replace(/'/g, "''")}'`);
 
-  const result = await (db as any).all(sql.raw(`
+  const result = await db.run(sql.raw(`
     SELECT
       lc.id AS consumable_id,
       lc.item_code AS item_code,

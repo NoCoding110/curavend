@@ -394,7 +394,8 @@ app.post('/utils/fernet-roundtrip', rbac('ACCOUNT_MANAGER'), async (c) => {
   const key = body.key ?? c.env.FERNET_KEY ?? fernetGenerateKey();
   const token = await fernetEncrypt(body.plaintext, key);
   const decrypted = await fernetDecrypt(token, key);
-  const tokenBin = atob(token.replace(/-/g, '+').replace(/_/g, '/'));
+  const b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+  const tokenBin = atob(b64 + '='.repeat((4 - b64.length % 4) % 4));
   return c.json({
     ok: true,
     token,

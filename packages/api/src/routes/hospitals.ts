@@ -3,6 +3,7 @@ import { eq, like, desc, sql, and } from 'drizzle-orm';
 import { getDb } from '../lib/db';
 import { hospitals } from '@curavend/db';
 import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors';
+import { stripImmutableFields } from '../lib/sanitizeBody';
 import type { Env } from '../lib/env';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: any } }>();
@@ -89,7 +90,7 @@ app.post('/', async (c) => {
 
   await db.insert(hospitals).values({
     id,
-    ...body,
+    ...stripImmutableFields(body),
     modifiedOrders: 0,
     inProcessOrders: 0,
     cancelledOrders: 0,
@@ -131,7 +132,7 @@ app.put('/:id', async (c) => {
 
   await db
     .update(hospitals)
-    .set({ ...body, updatedAt: new Date().toISOString() })
+    .set({ ...stripImmutableFields(body), updatedAt: new Date().toISOString() })
     .where(eq(hospitals.id, id));
 
   const result = await db

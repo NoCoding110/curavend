@@ -84,6 +84,16 @@ export const orders = sqliteTable(
     modifyInvoiceReason: text("modify_invoice_reason"),
     purchaseOrderNumber: text("purchase_order_number"),
     isDispensed: integer("is_dispensed").default(0),
+
+    // ── Epic FHIR linkage (migration 0023) ─────────────────────────
+    // Only 2 columns landed on `orders` — the table is near SQLite's ALTER
+    // column limit. The remaining Epic metadata (fhir_encounter_id, document
+    // reference id, procedure resource ids) lives in `order_epic_metadata`
+    // (migration 0024, written when Phase 1.F lands).
+    /** EhrConnection.id this order is bound to (if sourced from / pushed to Epic). */
+    epicConnectionId: text("epic_connection_id"),
+    /** Epic FHIR Patient.id this order's patient maps to. */
+    fhirPatientId: text("fhir_patient_id"),
     vendorId: text("vendor_id"),
     vendorReferenceNumber: text("vendor_reference_number"),
     vendorOpened: integer("vendor_opened").default(0),

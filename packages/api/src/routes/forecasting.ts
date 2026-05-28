@@ -70,7 +70,7 @@ app.get('/demand', async (c) => {
         FROM base
         GROUP BY hcpc_code, hospital_id
       )
-      SELECT s.*, h.description as hcpc_description
+      SELECT s.*, h.short_description as hcpc_description
       FROM summary s
       LEFT JOIN hcpc_codes h ON h.code = s.hcpc_code
       ORDER BY s.total_12mo DESC

@@ -3,6 +3,7 @@ import { eq, like, desc, asc, and, sql, or } from 'drizzle-orm';
 import { getDb } from '../lib/db';
 import { orders, orderItems, orderHistory, vendors, hospitals, hospitalFacilities, hospitalDepartments, users } from '@curavend/db';
 import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors';
+import { stripImmutableFields } from '../lib/sanitizeBody';
 import { requirePermission } from '../middleware/requirePermission';
 import type { Env } from '../lib/env';
 import { InvoiceService } from '../services/invoiceService';
@@ -50,11 +51,16 @@ export function assertOrderAccess(user: any, order: { hospitalId?: string | null
   }
 }
 
-// GET /orders - List orders with filters
-app.get('/', requirePermission('orders', 'READ'), async (c) => {
+// List orders with filters. Registered on GET /orders and POST /orders/query.
+// The `search` filter can be a patient name (PHI); the POST variant carries it
+// in the JSON body so it never lands in the URL / access logs. The frontend
+// uses POST; GET stays for compatibility.
+const listOrdersHandler = async (c: any) => {
   const db = getDb(c.env.DB);
   const user = c.get('user');
 
+  const src: Record<string, any> =
+    c.req.method === 'POST' ? await c.req.json().catch(() => ({})) : c.req.query();
   const {
     status,
     orderSubStatus,
@@ -68,7 +74,7 @@ app.get('/', requirePermission('orders', 'READ'), async (c) => {
     offset = '0',
     sortBy = 'createdAt',
     sortOrder = 'desc',
-  } = c.req.query();
+  } = src;
 
   let conditions: any[] = [];
 
@@ -147,7 +153,10 @@ app.get('/', requirePermission('orders', 'READ'), async (c) => {
     items: results,
     total: countResult[0]?.count || 0,
   });
-});
+};
+
+app.get('/', requirePermission('orders', 'READ'), listOrdersHandler);
+app.post('/query', requirePermission('orders', 'READ'), listOrdersHandler);
 
 // GET /orders/:id - Get order detail with items, history, and joined vendor/hospital names
 app.get('/:id', requirePermission('orders', 'READ'), async (c) => {
@@ -204,7 +213,7 @@ app.get('/:id', requirePermission('orders', 'READ'), async (c) => {
     userAgent: c.req.header('User-Agent') ?? undefined,
   });
 
-  return c.json({
+  const response: any = {
     ...order,
     vendor: order.vendorId ? { id: order.vendorId, name: vendorName, contact: vendorContact } : null,
     hospital: order.hospitalId ? { id: order.hospitalId, name: hospitalName, contact: hospitalContact } : null,
@@ -213,7 +222,18 @@ app.get('/:id', requirePermission('orders', 'READ'), async (c) => {
     physicianDetail: order.physicianId ? { id: order.physicianId, name: physicianName, npiNumber: physicianNpi, specialty: physicianSpecialty } : null,
     orderItems: items,
     orderHistory: history,
-  });
+  };
+
+  // HIPAA minimum-necessary — vendors fulfill on patientName only; strip
+  // identifiers they don't need (DOB, address, email, phone).
+  if (user.userType === 'VENDOR') {
+    response.patientBirthDate = null;
+    response.patientAddress = null;
+    response.patientEmail = null;
+    response.patientPhone = null;
+  }
+
+  return c.json(response);
 });
 
 // POST /orders - Create order
@@ -715,7 +735,7 @@ app.put('/:id', requirePermission('orders', 'WRITE'), async (c) => {
   await db
     .update(orders)
     .set({
-      ...body,
+      ...stripImmutableFields(body),
       changedByUserId: user.id,
       updatedAt: new Date().toISOString(),
     })

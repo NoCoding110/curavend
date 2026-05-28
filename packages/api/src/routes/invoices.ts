@@ -3,6 +3,7 @@ import { eq, desc, asc, and, sql, gte, lte } from 'drizzle-orm';
 import { getDb } from '../lib/db';
 import { invoices, invoiceItems, vendors, hospitals } from '@curavend/db';
 import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors';
+import { stripImmutableFields } from '../lib/sanitizeBody';
 import type { Env } from '../lib/env';
 import { logPhiAccess } from '../services/phiAuditService';
 
@@ -264,7 +265,7 @@ app.put('/:id', async (c) => {
   if (!existing.length) throw new NotFoundError('Invoice not found');
   assertInvoiceAccess(user, existing[0]);
 
-  await db.update(invoices).set({ ...body, updatedAt: new Date().toISOString() }).where(eq(invoices.id, id));
+  await db.update(invoices).set({ ...stripImmutableFields(body), updatedAt: new Date().toISOString() }).where(eq(invoices.id, id));
 
   const result = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
   return c.json(result[0]);

@@ -17,6 +17,7 @@ import {
 import { ValidationError, NotFoundError, ConflictError, ForbiddenError } from '../lib/errors';
 import { requirePermission } from '../middleware/requirePermission';
 import { ensureSequenceTable, getNextValue } from '../services/sequenceService';
+import { logPhiAccess } from '../services/phiAuditService';
 import type { Env } from '../lib/env';
 import type { AuthUser } from '../middleware/auth';
 
@@ -148,6 +149,7 @@ app.post('/', requirePermission('compliance-alerts', 'WRITE'), async (c) => {
 
 app.get('/:id', requirePermission('compliance-alerts', 'READ'), async (c) => {
   const db = getDb(c.env.DB);
+  const user = c.get('user');
   const { id } = c.req.param();
   const [row] = await db.select().from(recalls).where(eq(recalls.id, id)).limit(1);
   if (!row) throw new NotFoundError('Recall not found');
@@ -156,6 +158,16 @@ app.get('/:id', requirePermission('compliance-alerts', 'READ'), async (c) => {
     .where(eq(recallAffectedItems.recallId, id))
     .orderBy(desc(recallAffectedItems.createdAt))
     .limit(2000);
+  await logPhiAccess(c.env, {
+    userId: user.id,
+    userEmail: user.email,
+    userType: user.userType,
+    resourceType: 'RECALL',
+    resourceId: id,
+    action: 'VIEW',
+    ipAddress: c.req.header('CF-Connecting-IP') ?? c.req.header('X-Forwarded-For') ?? undefined,
+    userAgent: c.req.header('User-Agent') ?? undefined,
+  });
   return c.json({ ...row, affectedItems: items });
 });
 
@@ -186,7 +198,7 @@ app.post('/:id/close', requirePermission('compliance-alerts', 'FULL'), async (c)
   if (!row) throw new NotFoundError('Recall not found');
   if (row.state === 'CLOSED') throw new ConflictError('Already closed');
   // Check all affected items have dispositions.
-  const undisposed = await (db as any).all(sql.raw(`
+  const undisposed = await db.run(sql.raw(`
     SELECT COUNT(*) AS c FROM recall_affected_items
     WHERE recall_id = '${id.replace(/'/g, "''")}' AND disposition IS NULL
   `));

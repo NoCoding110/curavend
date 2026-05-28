@@ -20,6 +20,7 @@ import {
   hospitals,
 } from '@curavend/db';
 import { ValidationError } from '../lib/errors';
+import { logPhiAccess } from '../services/phiAuditService';
 import type { Env } from '../lib/env';
 import type { AuthUser } from '../middleware/auth';
 
@@ -31,16 +32,25 @@ interface SearchGroup {
   total: number;
 }
 
-app.get('/', async (c) => {
-  const user = c.get('user');
-  const q = c.req.query('q');
-  const typesParam = c.req.query('types') ?? 'orders,skus,contracts';
-  const limit = Math.min(parseInt(c.req.query('limit') ?? '20'), 50);
+// The search term can be a patient name (PHI), which must NOT travel in a URL
+// query string (leaks to access logs, browser history, referrer headers).
+// The handler is registered on POST (preferred, term in JSON body) and GET
+// (kept for backward compatibility). The frontend uses POST.
+const searchHandler = async (c: any) => {
+  const user = c.get('user') as AuthUser;
+  let body: any = {};
+  if (c.req.method === 'POST') {
+    body = await c.req.json().catch(() => ({}));
+  }
+  const q = (body.q as string | undefined) ?? c.req.query('q');
+  const typesParam =
+    (body.types as string | undefined) ?? c.req.query('types') ?? 'orders,skus,contracts';
+  const limit = Math.min(parseInt(String(body.limit ?? c.req.query('limit') ?? '20')), 50);
   if (!q || q.trim().length < 2) {
     throw new ValidationError('q must be at least 2 characters');
   }
   const pattern = `%${q.trim()}%`;
-  const wantedTypes = new Set(typesParam.split(',').map((t) => t.trim()));
+  const wantedTypes = new Set(String(typesParam).split(',').map((t: string) => t.trim()));
   const db = getDb(c.env.DB);
   const groups: SearchGroup[] = [];
 
@@ -164,8 +174,22 @@ app.get('/', async (c) => {
   }
 
   const total = groups.reduce((s, g) => s + g.total, 0);
+  await logPhiAccess(c.env, {
+    userId: user.id,
+    userEmail: user.email,
+    userType: user.userType,
+    resourceType: 'SEARCH',
+    resourceId: 'patient-search',
+    action: 'SEARCH',
+    ipAddress: c.req.header('CF-Connecting-IP') ?? c.req.header('X-Forwarded-For') ?? undefined,
+    userAgent: c.req.header('User-Agent') ?? undefined,
+  });
   return c.json({ q: q.trim(), groups, total });
-});
+};
+
+// POST (preferred — keeps PHI search terms out of the URL) + GET (compat).
+app.post('/', searchHandler);
+app.get('/', searchHandler);
 
 // ─── Advanced search (Medzah-style DSL) ────────────────────────────────────
 

@@ -15,7 +15,7 @@
  * a PA, and navigates to the order detail page.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Button,
@@ -52,6 +52,9 @@ import { useBreadcrumbOverride } from '../../../contexts/BreadcrumbContext';
 import { get, post } from '../../../api/client';
 import { dmeOrderApi, type LcdCheckResult, type RequiredFinding } from '../../../api/dmeOrder';
 import { formularyApi } from '../../../api/formulary';
+import { useFhirLaunchContext } from '../../../hooks/useFhirLaunchContext';
+import { fhirApi, type LaunchContextPrefill } from '../../../api/fhirContext';
+import FromEpicBadge from '../components/FromEpicBadge';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -102,6 +105,121 @@ export const CreateDmeOrder: React.FC = () => {
 
   // Step 1: Patient + DME intake
   const [patientForm] = Form.useForm();
+  const [searchParams] = useSearchParams();
+  const fhirCtx = useFhirLaunchContext();
+  const [epicPrefill, setEpicPrefill] = useState<{
+    status: 'idle' | 'loading' | 'loaded' | 'error';
+    data?: LaunchContextPrefill;
+    error?: string;
+  }>({ status: 'idle' });
+
+  // ─── Epic FHIR pre-fill (Phase 1.F) ─────────────────────────────────────
+  // Fires once when wizard opens with ?fhirContext=1 (set by FhirLaunchBounce).
+  // Hydrates patient + diagnosis fields from Epic via the prefill endpoint.
+  useEffect(() => {
+    const wantsFhir = searchParams.get('fhirContext') === '1';
+    if (!wantsFhir || !fhirCtx.isFromEpic || !fhirCtx.patientId) return;
+    let cancelled = false;
+    setEpicPrefill({ status: 'loading' });
+    (async () => {
+      try {
+        const data = await fhirApi.launchContextPrefill(
+          fhirCtx.connId,
+          fhirCtx.patientId!,
+          fhirCtx.encounterId,
+          fhirCtx.fhirUser,
+        );
+        if (cancelled) return;
+        const p = data.patient;
+        if (p) {
+          patientForm.setFieldsValue({
+            patientName: p.name,
+            patientBirthDate: p.dob ? dayjs(p.dob) : undefined,
+            patientPhone: p.phone,
+            patientAddress: p.address
+              ? [
+                  ...(p.address.line ?? []),
+                  p.address.city,
+                  p.address.state,
+                  p.address.postalCode,
+                ].filter(Boolean).join(', ')
+              : undefined,
+          });
+        }
+        setEpicPrefill({ status: 'loaded', data });
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        setEpicPrefill({ status: 'error', error: msg });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fhirCtx.isFromEpic, fhirCtx.patientId]);
+
+  // ─── CDS Hooks last-mile pre-fill (Phase 2.M) ────────────────────────────
+  // Fires when the wizard opens from the order-sign CDS card deep-link
+  // (?source=cds-hooks&hcpcs=E0470,K0823&patientId=...&encounterId=...).
+  // Two things happen simultaneously:
+  //   a) HCPC lines are seeded from the comma-separated ?hcpcs param.
+  //   b) Patient demographics are fetched via the system-mode prefill endpoint.
+  useEffect(() => {
+    if (searchParams.get('source') !== 'cds-hooks') return;
+
+    // (a) Seed HCPC line items.
+    const rawHcpcs = searchParams.get('hcpcs') ?? '';
+    const hcpcList = rawHcpcs
+      .split(',')
+      .map((c) => c.trim().toUpperCase())
+      .filter((c) => /^[A-Z]\d{4}$/.test(c));
+    if (hcpcList.length > 0) {
+      setLines(
+        hcpcList.map((code, i) => ({
+          key: String(i + 1),
+          hcpcCode: code,
+          description: '',
+          quantity: 1,
+        })),
+      );
+    }
+
+    // (b) Patient prefill — only if patientId present.
+    const patientId = searchParams.get('patientId');
+    if (!patientId) return;
+    const encounterId = searchParams.get('encounterId') ?? undefined;
+    let cancelled = false;
+    setEpicPrefill({ status: 'loading' });
+    (async () => {
+      try {
+        const data = await fhirApi.cdsPrefill(patientId, encounterId);
+        if (cancelled) return;
+        const p = data.patient;
+        if (p) {
+          patientForm.setFieldsValue({
+            patientName: p.name,
+            patientBirthDate: p.dob ? dayjs(p.dob) : undefined,
+            patientPhone: p.phone,
+            patientAddress: p.address
+              ? [
+                  ...(p.address.line ?? []),
+                  p.address.city,
+                  p.address.state,
+                  p.address.postalCode,
+                ].filter(Boolean).join(', ')
+              : undefined,
+          });
+        }
+        setEpicPrefill({ status: 'loaded', data });
+      } catch (err: unknown) {
+        if (cancelled) return;
+        // Prefill is best-effort; don't block the wizard on failure.
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        setEpicPrefill({ status: 'error', error: msg });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount
 
   // Step 2: Diagnosis + HCPC lines
   const [dxForm] = Form.useForm();
@@ -346,6 +464,34 @@ export const CreateDmeOrder: React.FC = () => {
       case 0:
         return (
           <StepCard title="1. Patient & DME Intake">
+            {epicPrefill.status !== 'idle' && (
+              <Alert
+                type={
+                  epicPrefill.status === 'loaded' ? 'success'
+                    : epicPrefill.status === 'error' ? 'error'
+                    : 'info'
+                }
+                showIcon
+                style={{ marginBottom: 12 }}
+                message={
+                  <Space>
+                    <FromEpicBadge inline />
+                    {epicPrefill.status === 'loading' && <Text>Pulling patient context from Epic…</Text>}
+                    {epicPrefill.status === 'loaded' && epicPrefill.data?.patient && (
+                      <Text>
+                        Pre-filled from Epic: <Text strong>{epicPrefill.data.patient.name}</Text>
+                        {epicPrefill.data.coverages[0] && (
+                          <> · coverage: <Text>{epicPrefill.data.coverages[0].payorName}</Text></>
+                        )}
+                      </Text>
+                    )}
+                    {epicPrefill.status === 'error' && (
+                      <Text type="danger">Epic pre-fill failed: {epicPrefill.error}</Text>
+                    )}
+                  </Space>
+                }
+              />
+            )}
             <Form form={patientForm} layout="vertical">
               <Row gutter={16}>
                 <Col span={12}><Form.Item name="patientName" label="Patient name" rules={[{ required: true }]}><Input /></Form.Item></Col>

@@ -7,6 +7,7 @@ import FullPageLayout from '../layouts/FullPageLayout';
 
 // Lazy-loaded pages
 const Landing = lazy(() => import('../features/landing/pages/Landing'));
+const FhirLaunchBounce = lazy(() => import('../features/landing/pages/FhirLaunchBounce'));
 const Login = lazy(() => import('../features/auth/pages/Login'));
 const LabDashboard = lazy(() => import('../features/labs/pages/LabDashboard'));
 const LabOrders = lazy(() => import('../features/labs/pages/LabOrders'));
@@ -174,6 +175,9 @@ const AllRoutes: React.FC = () => {
       <Routes>
         {/* Public landing page — replaces the old "/" → Dashboard mapping. */}
         <Route path="/" element={<Landing />} />
+
+        {/* Public FHIR launch bounce — entry after Epic OAuth callback. */}
+        <Route path="/fhir-launch-bounce" element={<FhirLaunchBounce />} />
 
         {/* Public auth routes */}
         <Route element={<FullPageLayout />}>

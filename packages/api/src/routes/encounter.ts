@@ -434,8 +434,9 @@ app.put('/:orderId/encounter/:section/items/:itemId', async (c) => {
   }
   if (!setters.length) throw new ValidationError('no updatable fields provided');
 
+  const escId = (s: string) => String(s).replace(/'/g, "''");
   await db.run(
-    sql.raw(`UPDATE order_items SET ${setters.join(', ')} WHERE id = '${itemId}' AND order_id = '${orderId}'`),
+    sql.raw(`UPDATE order_items SET ${setters.join(', ')} WHERE id = '${escId(itemId)}' AND order_id = '${escId(orderId)}'`),
   );
 
   await logAudit(db, {
@@ -701,7 +702,8 @@ app.post('/:orderId/encounter/submit', async (c) => {
   }
   history.push({ status: 'ORDER_COMPLETED', timestamp: now });
 
-  await db.run(sql.raw(`UPDATE orders SET status='COMPLETED', order_sub_status='ORDER_COMPLETED', order_sub_status_history='${JSON.stringify(history).replace(/'/g, "''")}', encounter_submitted_at='${now}', changed_by_user_id='${user.id}', updated_at='${now}' WHERE id='${orderId}'`));
+  const escSql = (s: string) => String(s).replace(/'/g, "''");
+  await db.run(sql.raw(`UPDATE orders SET status='COMPLETED', order_sub_status='ORDER_COMPLETED', order_sub_status_history='${JSON.stringify(history).replace(/'/g, "''")}', encounter_submitted_at='${escSql(now)}', changed_by_user_id='${escSql(user.id)}', updated_at='${escSql(now)}' WHERE id='${escSql(orderId)}'`));
 
   await db.insert(orderHistory).values({
     id: crypto.randomUUID(),

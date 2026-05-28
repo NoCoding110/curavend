@@ -31,6 +31,7 @@ import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { RootState } from '../../store/store';
+import { post } from '../../api/client';
 import { logout } from '../../store/slices/authSlice';
 import {
   setNotifications,
@@ -235,6 +236,9 @@ const Header: React.FC<HeaderProps> = ({ collapsed, onToggle }) => {
   );
 
   const handleLogout = () => {
+    // Best-effort server-side revocation of this user's refresh tokens before
+    // we clear local state. Fire-and-forget — never block logout on it.
+    void post('/auth/logout').catch(() => {});
     dispatch(logout());
     navigate('/login');
   };

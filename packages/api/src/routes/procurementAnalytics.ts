@@ -62,7 +62,7 @@ app.get('/charge-capture-leakage', requirePermission('orders', 'READ'), async (c
 app.get('/price-variance', requirePermission('contracts', 'READ'), async (c) => {
   const db = getDb(c.env.DB);
   const hospitalId = scopeHospital(c);
-  const result = await (db as any).all(sql.raw(`
+  const result = await db.run(sql.raw(`
     SELECT
       o.id AS order_id,
       o.vendor_id,
@@ -70,19 +70,19 @@ app.get('/price-variance', requirePermission('contracts', 'READ'), async (c) => 
       oi.description,
       oi.quantity,
       oi.unit_price AS bought_price,
-      ci.unit_price_cents / 100.0 AS contract_price,
-      (oi.unit_price - ci.unit_price_cents / 100.0) AS delta_per_unit,
-      ((oi.unit_price - ci.unit_price_cents / 100.0) * oi.quantity) AS delta_total,
+      ci.negotiated_rate AS contract_price,
+      (oi.unit_price - ci.negotiated_rate) AS delta_per_unit,
+      ((oi.unit_price - ci.negotiated_rate) * oi.quantity) AS delta_total,
       o.created_at
     FROM order_items oi
     INNER JOIN orders o ON o.id = oi.order_id
     INNER JOIN contracts c ON c.vendor_id = o.vendor_id AND c.hospital_id = o.hospital_id AND c.status = 'ACTIVE'
-    INNER JOIN contract_items ci ON ci.contract_id = c.id AND ci.code = oi.code
+    INNER JOIN contract_items ci ON ci.contract_id = c.id AND ci.hcpc_code = oi.code
     WHERE o.hospital_id = '${hospitalId.replace(/'/g, "''")}'
       AND oi.unit_price IS NOT NULL
-      AND ci.unit_price_cents IS NOT NULL
-      AND ABS(oi.unit_price - ci.unit_price_cents / 100.0) > 0.01
-    ORDER BY ABS((oi.unit_price - ci.unit_price_cents / 100.0) * oi.quantity) DESC
+      AND ci.negotiated_rate IS NOT NULL
+      AND ABS(oi.unit_price - ci.negotiated_rate) > 0.01
+    ORDER BY ABS((oi.unit_price - ci.negotiated_rate) * oi.quantity) DESC
     LIMIT 500
   `));
   const items = result.results ?? [];
@@ -111,7 +111,7 @@ app.get('/clinical-consumption', requirePermission('orders', 'READ'), async (c) 
     groupBy === 'department' ? 'department_id' :
     groupBy === 'provider' ? 'provider_user_id' :
     'encounter_id';
-  const result = await (db as any).all(sql.raw(`
+  const result = await db.run(sql.raw(`
     SELECT
       ${keyCol} AS group_key,
       COUNT(*) AS event_count,

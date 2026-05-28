@@ -6,9 +6,18 @@ export interface PhiAccessEvent {
   userId: string;
   userEmail: string;
   userType: string;
-  resourceType: 'ORDER' | 'INVOICE';
+  resourceType:
+    | 'ORDER'
+    | 'INVOICE'
+    | 'SEARCH'
+    | 'PRIOR_AUTH'
+    | 'LAB_ORDER'
+    | 'RECALL'
+    | 'CONTROLLED_SUBSTANCE'
+    | 'POINT_OF_USE'
+    | 'ENCOUNTER';
   resourceId: string;
-  action: 'VIEW' | 'EXPORT';
+  action: 'VIEW' | 'EXPORT' | 'SEARCH';
   ipAddress?: string;
   userAgent?: string;
 }

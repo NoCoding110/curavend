@@ -20,6 +20,7 @@ import {
 } from '@curavend/db';
 import { ValidationError, ForbiddenError, NotFoundError } from '../lib/errors';
 import { requirePermission } from '../middleware/requirePermission';
+import { logPhiAccess } from '../services/phiAuditService';
 import type { Env } from '../lib/env';
 import type { AuthUser } from '../middleware/auth';
 
@@ -48,6 +49,16 @@ app.get('/log', requirePermission('compliance-alerts', 'READ'), async (c) => {
     .where(conds.length ? and(...conds) : undefined)
     .orderBy(desc(controlledSubstanceLog.occurredAt))
     .limit(cap);
+  await logPhiAccess(c.env, {
+    userId: user.id,
+    userEmail: user.email,
+    userType: user.userType,
+    resourceType: 'CONTROLLED_SUBSTANCE',
+    resourceId: 'cs-log-list',
+    action: 'VIEW',
+    ipAddress: c.req.header('CF-Connecting-IP') ?? c.req.header('X-Forwarded-For') ?? undefined,
+    userAgent: c.req.header('User-Agent') ?? undefined,
+  });
   return c.json({ items: rows });
 });
 

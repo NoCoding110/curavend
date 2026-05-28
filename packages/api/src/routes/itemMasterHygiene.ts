@@ -34,7 +34,7 @@ app.get('/duplicates', requirePermission('formulary', 'READ'), async (c) => {
   const db = getDb(c.env.DB);
   const hospitalId = scopeHospital(c);
   // Raw SQL — drizzle's grouping ergonomics are heavy.
-  const result = await (db as any).all(sql.raw(`
+  const result = await db.run(sql.raw(`
     SELECT
       hcpc_code,
       LOWER(SUBSTR(TRIM(COALESCE(description, '')), 1, 40)) AS desc_key,
@@ -94,7 +94,7 @@ app.get('/unmapped', requirePermission('formulary', 'READ'), async (c) => {
   const db = getDb(c.env.DB);
   const hospitalId = scopeHospital(c);
   // Raw SQL because the LEFT JOIN + IS NULL pattern is clearer than drizzle.
-  const result = await (db as any).all(sql.raw(`
+  const result = await db.run(sql.raw(`
     SELECT fi.id, fi.hcpc_code, fi.description, fi.preferred_vendor_id,
            fi.facility_id, fi.created_at
     FROM formulary_items fi
