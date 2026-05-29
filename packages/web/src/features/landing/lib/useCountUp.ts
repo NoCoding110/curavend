@@ -1,48 +1,29 @@
-import { useEffect, useRef, useState } from 'react';
-import { useInView, useReducedMotion } from 'framer-motion';
+﻿import { useState, useEffect, useRef } from 'react';
+import { useInView } from 'framer-motion';
 
-interface CountUpOptions {
-  /** Final value. */
-  to: number;
-  /** Animation duration in ms (default 1400). */
-  duration?: number;
-  /** Easing — cubic-out by default. */
-  easing?: (t: number) => number;
-}
-
-/**
- * Intersection-triggered count-up.
- *
- * Returns `[value, ref]`. Attach the ref to the element that should be in
- * the viewport before the count starts. The first time the element enters
- * view, the value animates from 0 to `to` over `duration` ms.
- *
- * Reduced-motion users get the final value immediately, no animation.
- */
-export function useCountUp({ to, duration = 1400, easing }: CountUpOptions): [number, React.RefObject<HTMLDivElement>] {
-  const reduceMotion = useReducedMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '0px 0px -10% 0px' });
-  const [value, setValue] = useState(reduceMotion ? to : 0);
+export function useCountUp(target: number, duration = 1800): number {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref as React.RefObject<HTMLElement>, { once: true, margin: '-10% 0px' });
+  const [value, setValue] = useState(0);
 
   useEffect(() => {
-    if (!inView || reduceMotion) {
-      if (reduceMotion) setValue(to);
-      return undefined;
-    }
-    const start = performance.now();
-    const easeFn = easing ?? ((t: number) => 1 - Math.pow(1 - t, 3));
-    let rafId = 0;
-    const tick = (now: number) => {
-      const elapsed = now - start;
-      const t = Math.min(1, elapsed / duration);
-      const eased = easeFn(t);
-      setValue(Math.round(eased * to));
-      if (t < 1) rafId = requestAnimationFrame(tick);
+    if (!inView) return;
+    let start = 0;
+    const startTime = performance.now();
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // cubic-out easing
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(eased * target);
+      setValue(current);
+      if (progress < 1) requestAnimationFrame(step);
     };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [inView, reduceMotion, to, duration, easing]);
+    requestAnimationFrame(step);
+  }, [inView, target, duration]);
 
-  return [value, ref];
+  // Attach ref externally to caller's span
+  return value;
 }
+
+export { useRef as useCountRef };

@@ -1,158 +1,70 @@
-/**
- * Styled primitives shared across all landing sections.
- *
- * - <Section> — the 100vh-min wrapper with isolated stacking context
- * - <Layer> — absolutely-positioned parallax layer with depth-of-field blur
- * - <GlassCard> — frosted-glass surface
- * - <Spotlight> — cursor-tracking radial gradient (Hero only)
- * - <Glow> — colored bloom around buttons / nodes
- * - <Container> — max-width content centering
- * - <Eyebrow>, <SectionTitle>, <Lede> — typographic primitives
- */
-import styled, { css, keyframes } from 'styled-components';
+﻿import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { colors } from './motionTokens';
+import { BG_BASE, BG_CARD, BORDER_SUBTLE, BORDER_BRAND } from './motionTokens';
 
-export const Container = styled.div`
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
+export const Section = styled.section`
   position: relative;
-  z-index: 2;
-`;
-
-export const Section = styled.section<{ $minHeight?: string; $bg?: string }>`
-  position: relative;
-  min-height: ${(p) => p.$minHeight ?? '100vh'};
-  background: ${(p) => p.$bg ?? colors.bg0};
-  color: ${colors.text};
   isolation: isolate;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: stretch;
-  padding: 96px 0;
+  background: ${BG_BASE};
 `;
 
-/**
- * Parallax background layer. `depth` 1 = sharpest, slowest. 5 = most
- * blurred, fastest. The actual translateY is driven by Framer Motion in
- * the consuming component; this just sets up positioning + blur.
- */
-export const Layer = styled(motion.div)<{ $depth: 1 | 2 | 3 | 4 | 5 }>`
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+export const SectionInner = styled.div`
+  position: relative;
   z-index: 1;
-  ${(p) => {
-    const blurMap = { 1: 0, 2: 2, 3: 4, 4: 8, 5: 16 } as const;
-    return css`
-      filter: blur(${blurMap[p.$depth]}px);
-    `;
-  }}
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 80px 24px;
+  @media (max-width: 768px) { padding: 60px 16px; }
 `;
 
 export const GlassCard = styled(motion.div)`
-  position: relative;
-  background: ${colors.glass};
+  background: ${BG_CARD};
+  border: 1px solid ${BORDER_SUBTLE};
+  border-radius: 16px;
+  padding: 28px;
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
-  border: 1px solid ${colors.hairline};
-  border-radius: 20px;
-  padding: 28px;
-  color: ${colors.text};
-  overflow: hidden;
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  &:hover {
+    background: rgba(255,255,255,0.07);
+    border-color: ${BORDER_BRAND};
+    box-shadow: 0 0 32px rgba(27,174,229,0.12);
   }
 `;
 
-/**
- * Cursor-tracking radial gradient. The consumer maintains x/y MotionValues
- * for the cursor's position and passes them via inline style background-position.
- */
-export const Spotlight = styled(motion.div)`
+export const Glow = styled.div<{ color?: string; size?: number }>`
   position: absolute;
-  inset: 0;
+  border-radius: 50%;
+  filter: blur(60px);
   pointer-events: none;
-  background:
-    radial-gradient(
-      600px circle at var(--mx, 50%) var(--my, 30%),
-      rgba(27, 174, 229, 0.18),
-      transparent 60%
-    );
-  mix-blend-mode: screen;
-  z-index: 1;
+  background: ${p => p.color ?? 'rgba(27,174,229,0.25)'};
+  width: ${p => p.size ?? 400}px;
+  height: ${p => p.size ?? 400}px;
+  transform: translate(-50%, -50%);
 `;
 
-/**
- * Glow halo behind buttons or key nodes. `$color` may be brand or accent.
- */
-export const Glow = styled.div<{ $color?: string; $size?: number; $intensity?: number }>`
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: -${(p) => p.$size ?? 80}px;
-    background: radial-gradient(
-      circle,
-      ${(p) => p.$color ?? colors.brand} 0%,
-      transparent 70%
-    );
-    opacity: ${(p) => p.$intensity ?? 0.35};
-    filter: blur(28px);
-  }
-`;
-
-export const Eyebrow = styled.div`
+export const SectionLabel = styled.div`
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: ${colors.brand};
-  margin-bottom: 14px;
+  color: #1BAEE5;
+  margin-bottom: 12px;
 `;
 
-export const SectionTitle = styled(motion.h2)`
-  font-size: clamp(36px, 5vw, 60px);
+export const SectionHeading = styled.h2`
+  font-size: clamp(28px, 5vw, 48px);
   font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  color: ${colors.text};
-  margin: 0 0 24px 0;
-  max-width: 16ch;
-  background: linear-gradient(180deg, ${colors.text} 0%, ${colors.textDim} 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #fff;
+  margin: 0 0 16px;
+  line-height: 1.15;
 `;
 
-export const Lede = styled(motion.p)`
-  font-size: clamp(16px, 1.4vw, 19px);
-  line-height: 1.6;
-  color: ${colors.textDim};
-  margin: 0 0 36px 0;
-  max-width: 60ch;
-`;
-
-const drift = keyframes`
-  0%, 100% { transform: translate3d(0,0,0) rotate(0); }
-  50% { transform: translate3d(20px, -20px, 0) rotate(2deg); }
-`;
-
-export const FloatingShape = styled.div`
-  animation: ${drift} 14s ease-in-out infinite;
+export const SectionBody = styled.p`
+  font-size: 18px;
+  color: rgba(255,255,255,0.6);
+  max-width: 600px;
+  line-height: 1.7;
+  margin: 0;
 `;

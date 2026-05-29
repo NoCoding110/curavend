@@ -1,151 +1,112 @@
-/**
- * Security & compliance — sticky left intro column, scrolling right cards.
- */
-import React, { useRef } from 'react';
+﻿import React from 'react';
 import styled from 'styled-components';
-import { motion, useInView } from 'framer-motion';
-import {
-  SafetyCertificateOutlined,
-  AuditOutlined,
-  KeyOutlined,
-  SafetyOutlined,
-  DatabaseOutlined,
-  LockOutlined,
-} from '@ant-design/icons';
-import { Section, Container, Eyebrow, SectionTitle, Lede, GlassCard } from '../lib/primitives';
-import { colors, easings, stagger } from '../lib/motionTokens';
+import { motion } from 'framer-motion';
+import { Section, SectionInner, SectionLabel, SectionHeading, GlassCard } from '../lib/primitives';
+import { STAGGER_MED } from '../lib/motionTokens';
 
-const SecSection = styled(Section)`
-  background: ${colors.bg0};
-  padding: 140px 0;
-`;
-
-const TwoCol = styled.div`
+const Layout = styled.div`
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 1.4fr;
-  gap: 56px;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
   align-items: start;
-  @media (max-width: 900px) {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
+  @media(max-width: 768px) { grid-template-columns: 1fr; }
 `;
 
-const StickyCol = styled.div`
+const StickyLeft = styled.div`
   position: sticky;
-  top: 96px;
-  align-self: start;
+  top: 120px;
 `;
 
-const CardGrid = styled.div`
-  display: grid;
+const Bullets = styled.ul`
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const Bullet = styled.li`
+  font-size: 15px;
+  color: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  &::before { content: '✓'; color: #1BAEE5; font-weight: 700; }
+`;
+
+const CardGrid = styled(motion.div)`
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 `;
 
-const Card = styled(GlassCard)`
-  display: grid;
-  grid-template-columns: 48px 1fr;
-  gap: 18px;
-  align-items: start;
-  & .icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    background: ${colors.glass};
-    border: 1px solid ${colors.hairline};
-    display: grid;
-    place-items: center;
-    color: ${colors.brand};
-    font-size: 22px;
-  }
-  & h3 {
-    font-size: 17px;
-    font-weight: 600;
-    margin: 0 0 6px 0;
-    color: ${colors.text};
-  }
-  & p {
-    color: ${colors.textDim};
-    font-size: 14px;
-    line-height: 1.55;
-    margin: 0;
-  }
+const SecurityCard = styled(GlassCard)`
+  padding: 20px 24px;
 `;
 
-const ITEMS = [
-  {
-    icon: <FileLogged />,
-    title: 'PHI access log — every read, every export',
-    desc: 'Every patient-data view writes to `phi_access_log` with user, IP, user agent, and timestamp. Required for HIPAA §164.312(b).',
-  },
-  {
-    icon: <AuditOutlined />,
-    title: 'OIG LEIE monthly exclusion screening',
-    desc: 'Cron downloads the HHS/OIG exclusion CSV monthly and screens every active user by NPI + name. Excluded users are flagged immediately.',
-  },
-  {
-    icon: <KeyOutlined />,
-    title: 'TOTP + Email OTP MFA',
-    desc: 'Authenticator-app MFA and email one-time codes. Admin accounts are mandatorily MFA-enforced. Failed logins lock the account.',
-  },
-  {
-    icon: <SafetyOutlined />,
-    title: '8-resource RBAC + group inheritance',
-    desc: 'Per-user permissions over 8 resources at 4 levels (NONE/READ/WRITE/FULL). Groups bundle permissions and notification routes.',
-  },
-  {
-    icon: <DatabaseOutlined />,
-    title: 'Tenant-isolated R2 file scoping',
-    desc: 'Every file in R2 is scoped to one tenant. The file-access middleware refuses cross-tenant downloads. File-access log captures every R2 read.',
-  },
-  {
-    icon: <LockOutlined />,
-    title: 'Cloudflare encryption at rest + in transit',
-    desc: 'D1, R2, KV, and Queues are TLS-only and encrypted at rest. JWT-signed sessions; Turnstile bot protection on auth surfaces.',
-  },
+const CardTitle = styled.h4`
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 6px;
+`;
+
+const CardDetail = styled.p`
+  color: rgba(255,255,255,0.55);
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+`;
+
+const SECURITY_CARDS = [
+  { icon: '📋', title: 'PHI Access Log', detail: 'Every read of patient data is recorded with user, resource, action, and timestamp. Queryable by admin.' },
+  { icon: '🔍', title: 'OIG Monthly Screening', detail: 'Vendor and user lists screened against the LEIE exclusion database on a monthly cron schedule.' },
+  { icon: '🔐', title: 'TOTP + Email OTP MFA', detail: 'Two-factor authentication via authenticator app or email code. Mandatory for all users.' },
+  { icon: '👥', title: '8-Resource RBAC + Groups', detail: 'Fine-grained permission matrix across orders, contracts, reports, lab, inventory, catalog, users, and billing. Group-inherited grants.' },
+  { icon: '🗂️', title: 'Tenant-Isolated R2 Storage', detail: 'Every file upload is namespaced under its tenant ID in Cloudflare R2. Cross-tenant file reads are impossible by design.' },
+  { icon: '☁️', title: 'Cloudflare Edge Security', detail: 'TLS 1.3 in transit, AES-256 at rest, Turnstile bot protection on auth flows, rate limiting on sensitive endpoints.' },
 ];
 
-function FileLogged() {
-  return <SafetyCertificateOutlined />;
-}
-
-export const SecuritySection: React.FC = () => {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '0px 0px -10% 0px' });
-
-  return (
-    <SecSection>
-      <Container>
-        <TwoCol ref={ref}>
-          <StickyCol>
-            <Eyebrow>Security &amp; compliance</Eyebrow>
-            <SectionTitle>Built on healthcare-grade primitives.</SectionTitle>
-            <Lede>
-              We didn't bolt compliance on. Every read of patient data flows through audited
-              middleware. Every tenant lives behind its own scope. Every third-party call lands in
-              the integration log.
-            </Lede>
-          </StickyCol>
-          <CardGrid>
-            {ITEMS.map((item, i) => (
-              <Card
-                key={item.title}
-                initial={{ opacity: 0, y: 24 }}
-                animate={inView ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.6, ease: easings.ease, delay: i * stagger.normal }}
-              >
-                <div className="icon">{item.icon}</div>
-                <div>
-                  <h3>{item.title}</h3>
-                  <p>{item.desc}</p>
-                </div>
-              </Card>
-            ))}
-          </CardGrid>
-        </TwoCol>
-      </Container>
-    </SecSection>
-  );
+const container = {
+  hidden: {},
+  visible: { transition: { staggerChildren: STAGGER_MED } },
+};
+const cardItem = {
+  hidden: { opacity: 0, x: 30 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.5 } },
 };
 
-export default SecuritySection;
+export const SecuritySection: React.FC = () => (
+  <Section>
+    <SectionInner>
+      <Layout>
+        <StickyLeft>
+          <SectionLabel>Security & Compliance</SectionLabel>
+          <SectionHeading>Built on healthcare-grade primitives.</SectionHeading>
+          <Bullets>
+            <Bullet>HIPAA-aware audit logging</Bullet>
+            <Bullet>Role + group permission model</Bullet>
+            <Bullet>OIG LEIE monthly refresh</Bullet>
+            <Bullet>Cloudflare Turnstile on auth</Bullet>
+            <Bullet>Tenant-isolated storage</Bullet>
+            <Bullet>MFA enforced at login</Bullet>
+          </Bullets>
+        </StickyLeft>
+        <CardGrid
+          variants={container}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-10%' }}
+        >
+          {SECURITY_CARDS.map(c => (
+            <SecurityCard key={c.title} variants={cardItem}>
+              <CardTitle>{c.icon} {c.title}</CardTitle>
+              <CardDetail>{c.detail}</CardDetail>
+            </SecurityCard>
+          ))}
+        </CardGrid>
+      </Layout>
+    </SectionInner>
+  </Section>
+);

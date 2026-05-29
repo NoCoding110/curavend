@@ -1,50 +1,40 @@
-/**
- * Lenis smooth-scroll provider.
- *
- * Wraps the landing page with a Lenis instance that adds buttery-smooth
- * inertial scroll on desktop while preserving native scroll on touch
- * devices (Lenis on iOS can fight the OS scroll engine, so we opt out).
- *
- * When the user has `prefers-reduced-motion: reduce`, Lenis is bypassed
- * entirely and the page scrolls natively. Framer Motion's `useScroll` still
- * works either way — it listens for scroll events on the window.
- */
-import React, { useEffect } from 'react';
+﻿import React, { createContext, useContext, useEffect, useRef } from 'react';
 import Lenis from 'lenis';
-import { useReducedMotion } from 'framer-motion';
 
-interface ScrollProviderProps {
-  children: React.ReactNode;
-}
+const LenisContext = createContext<Lenis | null>(null);
 
-export const ScrollProvider: React.FC<ScrollProviderProps> = ({ children }) => {
-  const reduceMotion = useReducedMotion();
+export function ScrollProvider({ children }: { children: React.ReactNode }) {
+  const lenisRef = useRef<Lenis | null>(null);
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   useEffect(() => {
-    if (reduceMotion) return undefined;
-
-    // Match a slow, cinematic ease-out curve (cubic).
+    if (prefersReduced) return;
     const lenis = new Lenis({
       duration: 1.2,
-      easing: (t) => 1 - Math.pow(1 - t, 3),
+      easing: (t: number) => 1 - Math.pow(1 - t, 3),
       smoothWheel: true,
-      // iOS / Android: keep native scroll. Lenis touch support fights momentum
-      // and feels worse than the OS default.
-      syncTouch: false,
+      touchMultiplier: 0, // keep native touch
     });
+    lenisRef.current = lenis;
 
-    let rafId = 0;
-    const raf = (time: number) => {
+    let raf: number;
+    const animate = (time: number) => {
       lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
+      raf = requestAnimationFrame(animate);
     };
-    rafId = requestAnimationFrame(raf);
+    raf = requestAnimationFrame(animate);
 
     return () => {
-      cancelAnimationFrame(rafId);
+      cancelAnimationFrame(raf);
       lenis.destroy();
     };
-  }, [reduceMotion]);
+  }, [prefersReduced]);
 
-  return <>{children}</>;
-};
+  return (
+    <LenisContext.Provider value={lenisRef.current}>
+      {children}
+    </LenisContext.Provider>
+  );
+}
+
+export const useLenis = () => useContext(LenisContext);

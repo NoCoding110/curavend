@@ -1,68 +1,54 @@
-/**
- * Sticky top banner shown when the visitor is already authenticated.
- *
- * Gives them a 1-click path to the Dashboard without auto-redirecting (so
- * they can still browse the marketing page if they want).
- */
-import React from 'react';
+﻿import React from 'react';
 import styled from 'styled-components';
-import { ArrowRightOutlined } from '@ant-design/icons';
-import { useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { RootState } from '../../../store/store';
-import { colors, easings } from '../lib/motionTokens';
+import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 
-const BannerWrap = styled(motion.div)`
-  position: sticky;
+const Banner = styled(motion.div)`
+  position: fixed;
   top: 0;
-  z-index: 100;
-  width: 100%;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: rgba(27,174,229,0.95);
+  backdrop-filter: blur(8px);
   padding: 10px 24px;
-  background: linear-gradient(90deg, ${colors.bg2} 0%, ${colors.bg3} 100%);
-  border-bottom: 1px solid ${colors.hairlineStrong};
-  color: ${colors.text};
-  font-size: 14px;
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   gap: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
 `;
 
-const GoLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: ${colors.brandGlow};
-  font-weight: 600;
+const DashLink = styled(Link)`
+  background: rgba(255,255,255,0.2);
+  border-radius: 6px;
+  padding: 4px 12px;
+  color: #fff;
   text-decoration: none;
-  &:hover {
-    color: ${colors.text};
-  }
+  font-weight: 700;
+  &:hover { background: rgba(255,255,255,0.3); color: #fff; }
 `;
 
 export const AuthedBanner: React.FC = () => {
-  const user = useSelector((s: RootState) => s.auth.userData);
-  const token = useSelector((s: RootState) => s.auth.token);
-  if (!token || !user) return null;
+  const token = useSelector((s: any) => s.auth?.token);
+  const user = useSelector((s: any) => s.auth?.userData);
 
   return (
     <AnimatePresence>
-      <BannerWrap
-        initial={{ y: -40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: -40, opacity: 0 }}
-        transition={{ duration: 0.4, ease: easings.ease }}
-      >
-        <span>
-          Welcome back, <strong style={{ color: colors.text }}>{user.name || user.email}</strong>
-        </span>
-        <GoLink to="/dashboard">
-          Go to Dashboard <ArrowRightOutlined />
-        </GoLink>
-      </BannerWrap>
+      {token && (
+        <Banner
+          initial={{ y: -48 }}
+          animate={{ y: 0 }}
+          exit={{ y: -48 }}
+          transition={{ duration: 0.35 }}
+        >
+          <span>Welcome back{user?.name ? `, ${user.name}` : ''} — you're already signed in</span>
+          <DashLink to="/dashboard">Go to Dashboard →</DashLink>
+        </Banner>
+      )}
     </AnimatePresence>
   );
 };
-
-export default AuthedBanner;

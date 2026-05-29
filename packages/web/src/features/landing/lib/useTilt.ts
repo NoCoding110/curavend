@@ -1,58 +1,28 @@
-import { useRef } from 'react';
-import { useMotionValue, useSpring, useTransform, useReducedMotion, type MotionValue } from 'framer-motion';
-import { easings } from './motionTokens';
+﻿import { useRef, useCallback } from 'react';
+import { useMotionValue, useSpring } from 'framer-motion';
+import { SPRING_TILT } from './motionTokens';
 
-interface TiltOptions {
-  /** Max tilt angle in degrees (default 8). */
-  maxTilt?: number;
-  /** Perspective distance in pixels (default 1000). */
-  perspective?: number;
-}
-
-/**
- * Mouse-aware tilt hook for hover micro-interactions.
- *
- * Returns:
- *  - `ref` to attach to the target element
- *  - `rotateX`, `rotateY`: spring-smoothed motion values that lerp toward
- *    the cursor position. Both reset to 0 when the cursor leaves.
- *  - `transformPerspective`: a constant motion value the CSS uses to make
- *    the tilt look 3D.
- *  - `onMouseMove` and `onMouseLeave` handlers.
- *
- * Reduced-motion users get no-op handlers.
- */
-export function useTilt(options: TiltOptions = {}): {
-  ref: React.RefObject<HTMLDivElement>;
-  rotateX: MotionValue<number>;
-  rotateY: MotionValue<number>;
-  transformPerspective: number;
-  onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => void;
-  onMouseLeave: () => void;
-} {
-  const { maxTilt = 8, perspective = 1000 } = options;
-  const reduceMotion = useReducedMotion();
+export function useTilt() {
   const ref = useRef<HTMLDivElement>(null);
+  const rotateX = useSpring(useMotionValue(0), SPRING_TILT);
+  const rotateY = useSpring(useMotionValue(0), SPRING_TILT);
 
-  const rawX = useMotionValue(0);
-  const rawY = useMotionValue(0);
-  const rotateX = useSpring(useTransform(rawY, (v) => -v * maxTilt), easings.tiltSpring);
-  const rotateY = useSpring(useTransform(rawX, (v) => v * maxTilt), easings.tiltSpring);
+  const onMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = (e.clientX - cx) / (rect.width / 2);
+    const dy = (e.clientY - cy) / (rect.height / 2);
+    rotateY.set(dx * 8);
+    rotateX.set(-dy * 8);
+  }, [rotateX, rotateY]);
 
-  const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (reduceMotion || !ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const cx = (e.clientX - rect.left) / rect.width;
-    const cy = (e.clientY - rect.top) / rect.height;
-    rawX.set(cx - 0.5);
-    rawY.set(cy - 0.5);
-  };
+  const onMouseLeave = useCallback(() => {
+    rotateX.set(0);
+    rotateY.set(0);
+  }, [rotateX, rotateY]);
 
-  const onMouseLeave = () => {
-    if (reduceMotion) return;
-    rawX.set(0);
-    rawY.set(0);
-  };
-
-  return { ref, rotateX, rotateY, transformPerspective: perspective, onMouseMove, onMouseLeave };
+  return { ref, rotateX, rotateY, onMouseMove, onMouseLeave };
 }

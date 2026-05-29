@@ -1,258 +1,62 @@
-/**
- * Inline SVG illustrations for the landing page.
- *
- * Self-contained, no external image dependencies. All marks render in the
- * brand palette via `currentColor` / hardcoded brand hex so they look right
- * against the dark cinematic backdrop.
- */
-import React from 'react';
-import { colors } from '../lib/motionTokens';
+﻿import React from 'react';
 
-interface IconProps extends React.SVGProps<SVGSVGElement> {
-  size?: number;
-}
-
-const base = (size = 48) => ({
-  width: size,
-  height: size,
-  viewBox: '0 0 48 48',
-  fill: 'none',
-  xmlns: 'http://www.w3.org/2000/svg',
-});
-
-/** Hospital — caduceus-style cross enclosed in a soft square. */
-export const HospitalMark: React.FC<IconProps> = ({ size, ...props }) => (
-  <svg {...base(size)} {...props}>
-    <rect x="6" y="6" width="36" height="36" rx="10" stroke={colors.brand} strokeWidth="1.5" opacity="0.45" />
-    <path d="M24 14v20M14 24h20" stroke={colors.brand} strokeWidth="2.5" strokeLinecap="round" />
-    <circle cx="24" cy="24" r="3" fill={colors.brandGlow} />
-  </svg>
-);
-
-/** Vendor — pallet/box with stacked layers. */
-export const VendorMark: React.FC<IconProps> = ({ size, ...props }) => (
-  <svg {...base(size)} {...props}>
-    <path d="M8 20l16-8 16 8v16l-16 8-16-8V20z" stroke={colors.brand} strokeWidth="1.5" opacity="0.45" />
-    <path d="M8 20l16 8 16-8M24 28v18" stroke={colors.brand} strokeWidth="1.5" opacity="0.55" />
-    <circle cx="24" cy="36" r="2.5" fill={colors.accent} />
-  </svg>
-);
-
-/** Lab — flask with rounded base + dotted contents. */
-export const LabMark: React.FC<IconProps> = ({ size, ...props }) => (
-  <svg {...base(size)} {...props}>
-    <path
-      d="M18 8h12v6l8 22a6 6 0 01-5.6 8H13.6A6 6 0 018 36l8-22V8z"
-      stroke={colors.brand}
-      strokeWidth="1.5"
-      opacity="0.45"
-    />
-    <circle cx="20" cy="32" r="1.5" fill={colors.brandGlow} />
-    <circle cx="28" cy="34" r="1.5" fill={colors.accent} />
-    <circle cx="24" cy="38" r="2" fill={colors.brand} />
-  </svg>
-);
-
-/** Provider — caduceus stick figure / person. */
-export const ProviderMark: React.FC<IconProps> = ({ size, ...props }) => (
-  <svg {...base(size)} {...props}>
-    <circle cx="24" cy="14" r="6" stroke={colors.brand} strokeWidth="1.5" opacity="0.45" />
-    <path d="M10 42c0-8 6.3-14 14-14s14 6 14 14" stroke={colors.brand} strokeWidth="1.5" opacity="0.45" />
-    <circle cx="24" cy="32" r="2" fill={colors.brandGlow} />
-  </svg>
-);
-
-/** Super-vendor — nested squares / aggregation. */
-export const SuperVendorMark: React.FC<IconProps> = ({ size, ...props }) => (
-  <svg {...base(size)} {...props}>
-    <rect x="6" y="6" width="18" height="18" rx="4" stroke={colors.brand} strokeWidth="1.5" opacity="0.4" />
-    <rect x="14" y="14" width="18" height="18" rx="4" stroke={colors.brand} strokeWidth="1.5" opacity="0.6" />
-    <rect x="22" y="22" width="20" height="20" rx="5" stroke={colors.brand} strokeWidth="1.8" />
-    <circle cx="32" cy="32" r="2" fill={colors.accent} />
-  </svg>
-);
-
-/** Admin — shield with center dot. */
-export const AdminMark: React.FC<IconProps> = ({ size, ...props }) => (
-  <svg {...base(size)} {...props}>
-    <path
-      d="M24 6l16 6v12c0 10-8 18-16 22-8-4-16-12-16-22V12l16-6z"
-      stroke={colors.brand}
-      strokeWidth="1.5"
-      opacity="0.5"
-    />
-    <path d="M16 24l6 6 12-12" stroke={colors.brandGlow} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-/** Dotted grid for hero background. */
-export const GridDots: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg
-    width="100%"
-    height="100%"
-    xmlns="http://www.w3.org/2000/svg"
-    preserveAspectRatio="xMidYMid slice"
-    {...props}
-  >
-    <defs>
-      <pattern id="dots" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
-        <circle cx="2" cy="2" r="1" fill={colors.brand} fillOpacity="0.18" />
-      </pattern>
-    </defs>
-    <rect width="100%" height="100%" fill="url(#dots)" />
-  </svg>
-);
-
-/** Hex network — abstract connection lines. */
-export const HexNetwork: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg width="100%" height="100%" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg" {...props}>
-    <defs>
-      <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor={colors.brand} stopOpacity="0.5" />
-        <stop offset="100%" stopColor={colors.accent} stopOpacity="0.0" />
-      </linearGradient>
-    </defs>
-    {[
-      [100, 120, 320, 90],
-      [320, 90, 520, 160],
-      [520, 160, 700, 110],
-      [120, 320, 280, 380],
-      [280, 380, 480, 320],
-      [480, 320, 680, 410],
-      [200, 500, 380, 470],
-      [380, 470, 580, 530],
-      [320, 90, 280, 380],
-      [520, 160, 480, 320],
-    ].map(([x1, y1, x2, y2], i) => (
-      <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="url(#lineGrad)" strokeWidth="1" />
-    ))}
-    {[
-      [100, 120],
-      [320, 90],
-      [520, 160],
-      [700, 110],
-      [120, 320],
-      [280, 380],
-      [480, 320],
-      [680, 410],
-      [200, 500],
-      [380, 470],
-      [580, 530],
-    ].map(([cx, cy], i) => (
-      <circle key={i} cx={cx} cy={cy} r="2.5" fill={colors.brand} opacity="0.7" />
-    ))}
-  </svg>
-);
-
-/** Mesh gradient blob for hero parallax. */
-export const Blob: React.FC<{ color?: string; size?: number } & React.SVGProps<SVGSVGElement>> = ({
-  color = colors.brand,
-  size = 600,
-  ...props
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 600 600"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
-    <defs>
-      <radialGradient id={`blob-${color.replace('#', '')}`} cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor={color} stopOpacity="0.55" />
-        <stop offset="60%" stopColor={color} stopOpacity="0.18" />
-        <stop offset="100%" stopColor={color} stopOpacity="0" />
-      </radialGradient>
-    </defs>
-    <circle cx="300" cy="300" r="300" fill={`url(#blob-${color.replace('#', '')})`} />
-  </svg>
-);
-
-/** Curavend wordmark — text logo only (per plan, no logo asset). */
-export const Wordmark: React.FC<{ size?: number }> = ({ size = 24 }) => (
-  <span
-    style={{
-      fontSize: size,
-      fontWeight: 700,
-      letterSpacing: '-0.02em',
-      background: `linear-gradient(180deg, ${colors.text} 0%, ${colors.brandGlow} 100%)`,
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      backgroundClip: 'text',
-    }}
-  >
-    Curavend
-  </span>
-);
-
-/** Cloudflare-like Workers mark. */
-export const CloudflareMark: React.FC<IconProps> = ({ size, ...props }) => (
-  <svg {...base(size)} {...props}>
-    <path
-      d="M34 30c1.5 0 3-1.5 3-3.5 0-1.6-1-3-2.5-3.4-.1-3.5-3-6.4-6.6-6.4-2.5 0-4.7 1.4-5.8 3.5-.7-.5-1.6-.8-2.5-.8-2.4 0-4.3 2-4.3 4.4 0 .4.1.8.2 1.2A4.5 4.5 0 0010 30h24z"
-      stroke={colors.brand}
-      strokeWidth="1.5"
-      opacity="0.7"
-    />
-  </svg>
-);
-
-/** Generic integration logo — diamond with center dot. */
-export const IntegrationMark: React.FC<IconProps & { label?: string }> = ({ size = 56, label, ...props }) => (
-  <svg width={size} height={size} viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" {...props}>
-    <rect
-      x="8"
-      y="8"
-      width="40"
-      height="40"
-      rx="10"
-      stroke={colors.hairlineStrong}
-      strokeWidth="1"
-      fill={colors.glass}
-    />
-    {label && (
-      <text
-        x="28"
-        y="32"
-        textAnchor="middle"
-        fontSize="9"
-        fontFamily="Inter, system-ui"
-        fontWeight="600"
-        fill={colors.text}
-      >
-        {label}
-      </text>
+export const GridDots: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
+  <svg className={className} style={style} width="600" height="400" viewBox="0 0 600 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {Array.from({ length: 15 }, (_, row) =>
+      Array.from({ length: 20 }, (_, col) => (
+        <circle key={`${row}-${col}`} cx={col * 32 + 4} cy={row * 27 + 4} r="1.5" fill="rgba(27,174,229,0.25)" />
+      ))
     )}
   </svg>
 );
 
-/** Lab kit asset chip — TRF / Shipping Label / etc. */
-export const AssetChip: React.FC<{ label: string }> = ({ label }) => (
-  <div
-    style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 8,
-      padding: '10px 16px',
-      borderRadius: 12,
-      background: colors.glass,
-      border: `1px solid ${colors.hairlineStrong}`,
-      backdropFilter: 'blur(20px)',
-      color: colors.text,
-      fontSize: 13,
-      fontWeight: 500,
-      whiteSpace: 'nowrap',
-    }}
-  >
-    <span
-      style={{
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        background: colors.brand,
-        boxShadow: `0 0 12px ${colors.brand}`,
-      }}
-    />
-    {label}
-  </div>
+export const HexNetwork: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className, style }) => (
+  <svg className={className} style={style} width="500" height="350" viewBox="0 0 500 350" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {[
+      [80, 90], [200, 60], [320, 90], [440, 60],
+      [140, 180], [260, 150], [380, 180],
+      [80, 270], [200, 240], [320, 270], [440, 240],
+    ].map(([cx, cy], i) => (
+      <polygon key={i}
+        points={`${cx},${cy-24} ${cx+20},${cy-12} ${cx+20},${cy+12} ${cx},${cy+24} ${cx-20},${cy+12} ${cx-20},${cy-12}`}
+        fill="none" stroke="rgba(27,174,229,0.18)" strokeWidth="1"
+      />
+    ))}
+    {[[80,90,200,60],[200,60,320,90],[320,90,440,60],[200,60,140,180],[320,90,260,150],[260,150,380,180],[140,180,200,240],[260,150,200,240],[380,180,320,270],[200,240,80,270],[200,240,320,270],[320,270,440,240]].map(([x1,y1,x2,y2], i) => (
+      <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(27,174,229,0.1)" strokeWidth="1" />
+    ))}
+  </svg>
+);
+
+export const FlowCurve: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M 0 100 C 200 20, 600 180, 800 100" stroke="rgba(27,174,229,0.3)" strokeWidth="2" fill="none" strokeDasharray="8 4" />
+    <circle cx="0" cy="100" r="6" fill="#1BAEE5" />
+    <circle cx="800" cy="100" r="8" fill="#1BAEE5" />
+  </svg>
+);
+
+export const RoutingSVGFallback: React.FC = () => (
+  <svg width="100%" height="360" viewBox="0 0 700 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="350" cy="180" r="140" stroke="rgba(27,174,229,0.2)" strokeWidth="1" />
+    <circle cx="350" cy="180" r="100" stroke="rgba(27,174,229,0.15)" strokeWidth="1" />
+    <circle cx="350" cy="180" r="60" stroke="rgba(27,174,229,0.1)" strokeWidth="1" />
+    {/* Hospital node */}
+    <circle cx="160" cy="100" r="12" fill="#1BAEE5" />
+    <text x="160" y="125" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="11">Hospital</text>
+    {/* Vendor nodes */}
+    {[[480,80,'V1'],[520,180,'V2'],[470,290,'V3'],[280,300,'V4'],[200,250,'V5']].map(([x,y,lbl],i) => (
+      <g key={i}>
+        <circle cx={x as number} cy={y as number} r="8" fill="rgba(27,174,229,0.5)" />
+        <text x={x as number} y={(y as number)+22} textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="10">{lbl}</text>
+      </g>
+    ))}
+    {/* Winning path */}
+    <path d="M 160 100 C 250 80 350 100 480 80" stroke="#1BAEE5" strokeWidth="2" fill="none" opacity="0.8" />
+    <text x="350" y="180" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="12">Vendor Routing Engine</text>
+    {/* Scoring ring labels */}
+    {[['GEO',350,55],['CONTRACT',490,140],['CAPABILITY',420,285],['STOCK',215,295]].map(([lbl,x,y],i) => (
+      <text key={i} x={x as number} y={y as number} textAnchor="middle" fill="#1BAEE5" fontSize="11" fontWeight="600" opacity="0.8">{lbl}</text>
+    ))}
+  </svg>
 );

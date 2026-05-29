@@ -1,189 +1,95 @@
-/**
- * Pricing cascade — 4 angled glass cards.
- *
- * As the visitor scrolls, each card sharpens and rises while previous
- * cards push back and blur. Depth-of-field simulation.
- */
-import React, { useRef } from 'react';
+﻿import React from 'react';
 import styled from 'styled-components';
-import { motion, useInView, useScroll, useTransform } from 'framer-motion';
-import { Section, Container, Eyebrow, SectionTitle, Lede } from '../lib/primitives';
-import { colors, easings, stagger } from '../lib/motionTokens';
-import { useTilt } from '../lib/useTilt';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { useRef } from 'react';
+import { Section, SectionInner, SectionLabel, SectionHeading, SectionBody } from '../lib/primitives';
 
-const PricingSection = styled(Section)`
-  background: ${colors.bg1};
-  padding: 140px 0;
-`;
-
-const Stack = styled.div`
+const CascadeWrap = styled.div`
   position: relative;
+  perspective: 900px;
+  height: 360px;
   margin-top: 64px;
-  perspective: 1500px;
-  perspective-origin: 50% 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 28px;
+  @media(max-width: 600px) { height: 280px; }
 `;
 
-const TierCard = styled(motion.div)`
-  position: relative;
-  width: min(720px, 92vw);
-  padding: 28px 32px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, ${colors.bg2} 0%, ${colors.bg3} 100%);
-  border: 1px solid ${colors.hairline};
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  transform-style: preserve-3d;
-  will-change: transform, filter;
-  & .num {
-    flex: 0 0 56px;
-    height: 56px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, ${colors.brand} 0%, ${colors.accent} 100%);
-    display: grid;
-    place-items: center;
-    font-size: 22px;
-    font-weight: 700;
-    color: white;
-    box-shadow: 0 8px 24px ${colors.brand}55;
-  }
-  & h3 {
-    font-size: 22px;
-    font-weight: 700;
-    margin: 0 0 4px 0;
-    color: ${colors.text};
-  }
-  & p {
-    color: ${colors.textDim};
-    font-size: 14px;
-    line-height: 1.5;
-    margin: 0;
-  }
-  & .arrow {
-    color: ${colors.brand};
-    font-size: 24px;
-  }
+const PriceCard = styled(motion.div)<{ $color: string }>`
+  position: absolute;
+  left: 50%;
+  transform-origin: center top;
+  background: rgba(7,12,20,0.85);
+  border: 1px solid ${p => p.$color}33;
+  border-radius: 16px;
+  padding: 24px 32px;
+  min-width: 280px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px ${p => p.$color}22;
+`;
+
+const TierLabel = styled.div<{ $color: string }>`
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: ${p => p.$color};
+  margin-bottom: 6px;
+`;
+
+const TierName = styled.h3`
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 4px;
+`;
+
+const TierDesc = styled.p`
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  margin: 0;
 `;
 
 const TIERS = [
-  {
-    title: 'Contract pricing',
-    desc: 'If an ACTIVE contract covers this HCPC code for this hospital × vendor pair on this date, that price wins.',
-  },
-  {
-    title: 'Custom fee schedule',
-    desc: 'Else, fall back to a custom fee schedule attached at the hospital or vendor tier.',
-  },
-  {
-    title: 'Medicare allowable',
-    desc: 'Else, use the state-specific Medicare allowable for this HCPC code from the loaded fee schedule.',
-  },
-  {
-    title: 'Manual override',
-    desc: 'Else, surface a manual-pricing prompt to the orderer with all of the above shown side-by-side.',
-  },
+  { label: 'Tier 1 — First match', name: 'Contract Rate', desc: 'Negotiated rate from active facility contract', color: '#1BAEE5', top: 0, z: 30, idx: 0 },
+  { label: 'Tier 2 — Fallback', name: 'Medicare Rate', desc: 'CMS Medicare allowable by HCPC + state', color: '#7B5CF0', top: 60, z: 20, idx: 1 },
+  { label: 'Tier 3 — Override', name: 'Manual Rate', desc: 'Admin-entered rate for non-covered items', color: '#00C896', top: 120, z: 10, idx: 2 },
 ];
 
-interface TierCardWrapProps {
-  index: number;
-  title: string;
-  desc: string;
-  inView: boolean;
-}
-
-/**
- * True depth-of-field: each card uses its OWN scroll progress so it
- * sharpens when ITSELF is centered in the viewport — not when the section
- * has been scrolled some hard-coded amount. This makes card 1 sharp the
- * moment it lands in the middle of the screen (instead of being blurred
- * until the user has scrolled deeper into the section).
- *
- * Offset `['start 90%', 'end 10%']` => progress 0 when the card's top
- * crosses 90% of the viewport (just appeared near the bottom), progress 1
- * when the card's bottom crosses 10% (about to leave at the top). The
- * card's center crossing the viewport center is roughly progress=0.5,
- * which is where we want maximum sharpness.
- */
-const TierCardWrap: React.FC<TierCardWrapProps> = ({ index, title, desc, inView }) => {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: cardRef,
-    offset: ['start 85%', 'end 15%'],
-  });
-  const { ref: tiltRef, rotateX, rotateY, transformPerspective, onMouseMove, onMouseLeave } = useTilt({ maxTilt: 4 });
-
-  // Combine the two refs so a single DOM node is observed by both scroll AND tilt.
-  const setRefs = (el: HTMLDivElement | null) => {
-    (cardRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
-    (tiltRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
-  };
-
-  // Sharp at center (progress 0.4–0.6), blurred at edges.
-  const blur = useTransform(scrollYProgress, [0, 0.4, 0.5, 0.6, 1], [5, 0, 0, 0, 5]);
-  // Slight rise — card grows a touch as it nears center.
-  const scale = useTransform(scrollYProgress, [0, 0.4, 0.5, 0.6, 1], [0.95, 1, 1.02, 1, 0.95]);
-  // Hold opacity high through the center, fade only at the very edges.
-  const opacity = useTransform(scrollYProgress, [0, 0.15, 0.5, 0.85, 1], [0.55, 0.9, 1, 0.9, 0.55]);
-
+// Each card needs its own component so hooks are called at the component level, not inside .map().
+const TierCard: React.FC<{
+  tier: typeof TIERS[0];
+  scrollYProgress: ReturnType<typeof useScroll>['scrollYProgress'];
+}> = ({ tier, scrollYProgress }) => {
+  const i = tier.idx;
+  const opacity = useTransform(scrollYProgress, [0.1 + i * 0.1, 0.4 + i * 0.1], [0, 1]);
+  const y = useTransform(scrollYProgress, [0.1 + i * 0.1, 0.4 + i * 0.1], [40, 0]);
   return (
-    <TierCard
-      ref={setRefs}
-      initial={{ opacity: 0, y: 40 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.7, ease: easings.ease, delay: index * stagger.normal }}
-      onMouseMove={onMouseMove}
-      onMouseLeave={onMouseLeave}
-      style={{
-        rotateX,
-        rotateY,
-        transformPerspective,
-        filter: useTransform(blur, (b) => `blur(${b}px)`),
-        scale,
-        opacity,
-      }}
+    <PriceCard
+      $color={tier.color}
+      style={{ top: tier.top, translateX: '-50%', zIndex: tier.z, opacity, y }}
     >
-      <div className="num">{index + 1}</div>
-      <div style={{ flex: 1 }}>
-        <h3>{title}</h3>
-        <p>{desc}</p>
-      </div>
-      {index < TIERS.length - 1 && <span className="arrow">↓</span>}
-    </TierCard>
+      <TierLabel $color={tier.color}>{tier.label}</TierLabel>
+      <TierName>{tier.name}</TierName>
+      <TierDesc>{tier.desc}</TierDesc>
+    </PriceCard>
   );
 };
 
 export const PricingCascade: React.FC = () => {
-  const ref = useRef<HTMLElement>(null);
-  const inView = useInView(ref, { once: true, margin: '0px 0px -10% 0px' });
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
 
   return (
-    <PricingSection ref={ref}>
-      <Container>
-        <Eyebrow>Contract-aware pricing</Eyebrow>
-        <SectionTitle>The first match wins.</SectionTitle>
-        <Lede>
-          Curavend walks four pricing tiers in strict order. No row of the spreadsheet is ever
-          guessed at — every line item is sourced and audit-logged with the tier it came from.
-        </Lede>
-        <Stack>
-          {TIERS.map((t, i) => (
-            <TierCardWrap
-              key={t.title}
-              index={i}
-              title={t.title}
-              desc={t.desc}
-              inView={inView}
-            />
+    <Section ref={ref}>
+      <SectionInner>
+        <SectionLabel>Pricing Chain</SectionLabel>
+        <SectionHeading>First match wins.</SectionHeading>
+        <SectionBody>Contract → Medicare → Manual. The pricing waterfall resolves automatically so buyers always pay the best negotiated rate.</SectionBody>
+        <CascadeWrap>
+          {TIERS.map(tier => (
+            <TierCard key={tier.name} tier={tier} scrollYProgress={scrollYProgress} />
           ))}
-        </Stack>
-      </Container>
-    </PricingSection>
+        </CascadeWrap>
+      </SectionInner>
+    </Section>
   );
 };
-
-export default PricingCascade;

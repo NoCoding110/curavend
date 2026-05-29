@@ -1,92 +1,75 @@
-/**
- * Trust strip — 6 inline pills under the hero. Stagger entry on view.
- */
-import React, { useRef } from 'react';
+﻿import React from 'react';
 import styled from 'styled-components';
-import { motion, useInView } from 'framer-motion';
-import { Section, Container } from '../lib/primitives';
-import { colors, easings, stagger } from '../lib/motionTokens';
-import {
-  SafetyCertificateOutlined,
-  AuditOutlined,
-  LockOutlined,
-  AppstoreOutlined,
-  FileSearchOutlined,
-  CloudOutlined,
-} from '@ant-design/icons';
+import { motion } from 'framer-motion';
+import { Section, SectionInner } from '../lib/primitives';
+import { STAGGER_MED } from '../lib/motionTokens';
 
-const StripSection = styled(Section)`
-  min-height: auto;
-  padding: 56px 0;
-  background: ${colors.bg0};
+const Strip = styled(Section)`
+  background: rgba(7,12,20,0.98);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 `;
 
-const PillRow = styled.div`
+const Pills = styled(motion.div)`
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 10px 12px;
+  gap: 12px;
 `;
 
 const Pill = styled(motion.div)`
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 18px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
   border-radius: 100px;
-  background: ${colors.glass};
-  border: 1px solid ${colors.hairline};
-  backdrop-filter: blur(12px);
-  color: ${colors.textDim};
-  font-size: 13px;
+  padding: 8px 18px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.75);
   font-weight: 500;
-  letter-spacing: 0.02em;
   cursor: default;
-  transition: transform 0.25s ${easings.ease.toString()}, color 0.25s, border-color 0.25s, background 0.25s;
+  transition: border-color 0.2s, background 0.2s;
   &:hover {
-    transform: translateY(-2px);
-    color: ${colors.text};
-    border-color: ${colors.brand};
-    background: ${colors.glassHover};
-  }
-  & .anticon {
-    color: ${colors.brand};
-    font-size: 14px;
+    border-color: rgba(27,174,229,0.4);
+    background: rgba(27,174,229,0.06);
+    color: #fff;
   }
 `;
 
-const PILLS = [
-  { icon: <SafetyCertificateOutlined />, label: 'HIPAA-aware' },
-  { icon: <AuditOutlined />, label: 'OIG-screened' },
-  { icon: <LockOutlined />, label: 'MFA-enforced' },
-  { icon: <AppstoreOutlined />, label: 'Multi-tenant by design' },
-  { icon: <FileSearchOutlined />, label: 'Audit-logged' },
-  { icon: <CloudOutlined />, label: 'Cloudflare-native' },
+const TRUST_ITEMS = [
+  { icon: '🔒', label: 'HIPAA-Aware' },
+  { icon: '🛡️', label: 'OIG-Screened' },
+  { icon: '🔑', label: 'MFA-Enforced' },
+  { icon: '🏢', label: 'Multi-Tenant' },
+  { icon: '📋', label: 'Audit-Logged' },
+  { icon: '☁️', label: 'Cloudflare-Native' },
 ];
 
-export const TrustStrip: React.FC = () => {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '0px 0px -20% 0px' });
-
-  return (
-    <StripSection>
-      <Container>
-        <PillRow ref={ref}>
-          {PILLS.map((p, i) => (
-            <Pill
-              key={p.label}
-              initial={{ opacity: 0, y: 14 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, ease: easings.ease, delay: i * stagger.fast }}
-            >
-              {p.icon}
-              {p.label}
-            </Pill>
-          ))}
-        </PillRow>
-      </Container>
-    </StripSection>
-  );
+const container = {
+  hidden: {},
+  visible: { transition: { staggerChildren: STAGGER_MED } },
+};
+const item = {
+  hidden: { opacity: 0, y: 16, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5 } },
 };
 
-export default TrustStrip;
+export const TrustStrip: React.FC = () => (
+  <Strip>
+    <SectionInner style={{ padding: '32px 24px' }}>
+      <Pills
+        variants={container}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-5%' }}
+      >
+        {TRUST_ITEMS.map(t => (
+          <Pill key={t.label} variants={item}>
+            <span>{t.icon}</span> {t.label}
+          </Pill>
+        ))}
+      </Pills>
+    </SectionInner>
+  </Strip>
+);
