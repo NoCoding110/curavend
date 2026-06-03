@@ -1,9 +1,23 @@
 import { Hono } from 'hono';
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { eq, desc, and, sql, inArray } from 'drizzle-orm';
 import { getDb } from '../lib/db';
-import { rooms, messages, users } from '@curavend/db';
+import { rooms, messages, users, vendors, hospitals } from '@curavend/db';
 import { NotFoundError, ValidationError } from '../lib/errors';
 import type { Env } from '../lib/env';
+
+/** Build a human-readable label for a chat room. */
+function buildRoomDisplayName(
+  room: any,
+  vendorMap: Record<string, string>,
+  hospitalMap: Record<string, string>,
+): string {
+  const vendorName = vendorMap[room.vendor_id ?? room.vendorId] ?? null;
+  const hospitalName = hospitalMap[room.hospital_id ?? room.hospitalId] ?? null;
+  const orderId = room.order_id ?? room.orderId;
+  const orderShort = orderId ? `#${String(orderId).slice(0, 8)}` : null;
+  const parties = [vendorName, hospitalName].filter(Boolean).join(' · ');
+  return [parties, orderShort].filter(Boolean).join(' — ') || `Room ${String(room.id).slice(0, 8)}`;
+}
 
 const app = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 
@@ -36,8 +50,37 @@ app.get('/', async (c) => {
     .from(rooms)
     .where(conditions.length > 0 ? and(...conditions) : undefined);
 
+  // Enrich each room with vendor/hospital display names
+  const vendorIds = [...new Set(results.map((r: any) => r.vendorId).filter(Boolean))] as string[];
+  const hospitalIds = [...new Set(results.map((r: any) => r.hospitalId).filter(Boolean))] as string[];
+
+  const vendorMap: Record<string, string> = {};
+  const hospitalMap: Record<string, string> = {};
+
+  if (vendorIds.length > 0) {
+    const vRows = await db
+      .select({ id: vendors.id, name: vendors.name })
+      .from(vendors)
+      .where(inArray(vendors.id, vendorIds));
+    for (const v of vRows) vendorMap[v.id] = v.name ?? '';
+  }
+  if (hospitalIds.length > 0) {
+    const hRows = await db
+      .select({ id: hospitals.id, name: hospitals.name })
+      .from(hospitals)
+      .where(inArray(hospitals.id, hospitalIds));
+    for (const h of hRows) hospitalMap[h.id] = h.name ?? '';
+  }
+
+  const enriched = results.map((r: any) => ({
+    ...r,
+    vendorName: vendorMap[r.vendorId] ?? null,
+    hospitalName: hospitalMap[r.hospitalId] ?? null,
+    displayName: buildRoomDisplayName(r, vendorMap, hospitalMap),
+  }));
+
   return c.json({
-    items: results,
+    items: enriched,
     total: countResult[0]?.count || 0,
   });
 });

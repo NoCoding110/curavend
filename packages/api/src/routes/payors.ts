@@ -13,6 +13,7 @@ import {
 } from '@curavend/db';
 import { ValidationError, NotFoundError } from '../lib/errors';
 import { rbac } from '../middleware/rbac';
+import { getEligibilityProvider } from '../services/payorProviders';
 import type { Env } from '../lib/env';
 import type { AuthUser } from '../middleware/auth';
 
@@ -212,18 +213,14 @@ app.post(
     const [p] = await db.select().from(payors).where(eq(payors.id, id)).limit(1);
     if (!p) throw new NotFoundError('Payor not found');
 
-    // Stub logic: roll a deterministic-ish synthesized response based on the member id hash.
-    // Real impl would call X12 270 → 271 here.
-    const hashed = [...body.patientMemberId].reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) >>> 0, 0);
-    const isActive = hashed % 7 !== 0;
-    const copay = Number(((hashed % 50) + 5).toFixed(2));
-    const deductible = 1500;
-    const deductibleMet = Number((((hashed % 13) * 100) + 200).toFixed(2));
-
-    const status = !isActive ? 'INACTIVE' : 'ACTIVE';
-    const benefitNotes = isActive
-      ? `Active coverage. Plan year deductible $${deductible}. Coinsurance applies after deductible. (Stubbed response — real EDI 270/271 not yet wired.)`
-      : `Member ID not found or coverage lapsed. (Stubbed response.)`;
+    const provider = getEligibilityProvider(c.env);
+    const eligResult = await provider.check({
+      patientMemberId: body.patientMemberId,
+      patientName: body.patientName,
+      patientDob: body.patientDob,
+      hcpcCode: body.hcpcCode,
+      orderId: body.orderId,
+    });
 
     const checkId = crypto.randomUUID();
     await db.insert(eligibilityChecks).values({
@@ -234,29 +231,24 @@ app.post(
       patientDob: body.patientDob ?? null,
       requestedHcpcCode: body.hcpcCode ?? null,
       orderId: body.orderId ?? null,
-      status,
-      benefitNotes,
-      copayUsd: isActive ? copay : null,
-      deductibleUsd: isActive ? deductible : null,
-      deductibleMetUsd: isActive ? deductibleMet : null,
-      rawResponse: JSON.stringify({
-        stub: true,
-        payor: p.name,
-        member: body.patientMemberId,
-        active: isActive,
-      }),
+      status: eligResult.status,
+      benefitNotes: eligResult.benefitNotes,
+      copayUsd: eligResult.copayUsd,
+      deductibleUsd: eligResult.deductibleUsd,
+      deductibleMetUsd: eligResult.deductibleMetUsd,
+      rawResponse: JSON.stringify(eligResult.rawResponse ?? {}),
       checkedAt: new Date().toISOString(),
     });
 
     return c.json({
       id: checkId,
-      status,
-      benefitNotes,
-      copayUsd: isActive ? copay : null,
-      deductibleUsd: isActive ? deductible : null,
-      deductibleMetUsd: isActive ? deductibleMet : null,
+      status: eligResult.status,
+      benefitNotes: eligResult.benefitNotes,
+      copayUsd: eligResult.copayUsd,
+      deductibleUsd: eligResult.deductibleUsd,
+      deductibleMetUsd: eligResult.deductibleMetUsd,
       payor: { id: p.id, name: p.name, kind: p.kind },
-      stub: true,
+      simulated: eligResult.simulated,
     });
   },
 );

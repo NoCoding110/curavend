@@ -25,6 +25,8 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { useUserRoles } from '../../../hooks/useUserRoles';
+import { useAdminHospitalSelect } from '../../../hooks/useAdminHospitalSelect';
 import { ReloadOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import {
@@ -43,12 +45,21 @@ const PageWrapper = styled.div`
 `;
 
 const VendorCoveragePage: React.FC = () => {
+  const { isAdmin, isHospital, isProvider } = useUserRoles();
+  const adminHospital = useAdminHospitalSelect();
   const [activeOnly, setActiveOnly] = useState(true);
   // Phase A: byCategory mode is the default for hospital users.
   const [byCategory, setByCategory] = useState(true);
+
+  // Provider users have no hospitalId — skip the API call and show a hint
+  // instead of a raw 400 error from the server.
+  const skipCoverage = isProvider && !isAdmin && !isHospital;
+
   const { data, loading, error, refetch } = useVendorCoverageMatrix(
     activeOnly,
     byCategory,
+    isAdmin ? adminHospital.selectedId : undefined,
+    skipCoverage,
   );
 
   // Phase A toolbar filters
@@ -226,6 +237,41 @@ const VendorCoveragePage: React.FC = () => {
         }
       : undefined;
 
+  // Provider / non-hospital users have no hospitalId — show a clear message
+  // instead of a server-side "hospitalId query parameter required" 400 error.
+  if (skipCoverage) {
+    return (
+      <PageWrapper>
+        <Alert
+          type="info"
+          showIcon
+          message="Vendor Coverage not available for your account type"
+          description="This view requires a hospital affiliation. Contact your administrator if you believe this is incorrect."
+        />
+      </PageWrapper>
+    );
+  }
+
+  if (isAdmin && !adminHospital.selectedId) {
+    return (
+      <PageWrapper>
+        <Alert type="info" showIcon style={{ marginBottom: 16 }}
+          message="Select a hospital to view vendor coverage"
+          description={
+            <Select
+              placeholder="Select hospital…"
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280, marginTop: 8 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          }
+        />
+      </PageWrapper>
+    );
+  }
+
   if (error) {
     return (
       <PageWrapper>
@@ -254,6 +300,16 @@ const VendorCoveragePage: React.FC = () => {
           </Text>
         </div>
         <Space>
+          {isAdmin && (
+            <Select
+              placeholder="Select hospital…"
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 220 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          )}
           <span style={{ fontSize: 13 }}>By category</span>
           <Switch checked={byCategory} onChange={setByCategory} />
           <span style={{ fontSize: 13 }}>Active vendors only</span>

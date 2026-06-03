@@ -186,6 +186,20 @@ const Login: React.FC = () => {
 
   const completeLogin = (response: any) => {
     if (response.accessToken && response.user) {
+      // If the user already acknowledged PHI for this browser session,
+      // skip the modal and proceed immediately.
+      if (sessionStorage.getItem('hasAgreedToPHIAccess')) {
+        dispatch(
+          setCredentials({
+            token: response.accessToken,
+            refreshToken: response.refreshToken,
+            userData: response.user,
+          }),
+        );
+        const dest = response.user?.userType === 'LAB' ? '/labs' : '/dashboard';
+        navigate(dest);
+        return;
+      }
       setPendingLogin(response);
       setPhiModalVisible(true);
     }
@@ -216,8 +230,12 @@ const Login: React.FC = () => {
           userData: pendingLogin.user,
         }),
       );
+      // Remember for this browser session so subsequent logins skip the modal.
+      sessionStorage.setItem('hasAgreedToPHIAccess', '1');
       setPhiModalVisible(false);
-      navigate('/dashboard');
+      // Lab users land on their own portal; everyone else hits the main dashboard.
+      const dest = pendingLogin.user?.userType === 'LAB' ? '/labs' : '/dashboard';
+      navigate(dest);
     }
   };
 

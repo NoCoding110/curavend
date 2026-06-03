@@ -337,9 +337,10 @@ export const HelpCenter: React.FC = () => {
       ? entries
       : entries.filter((e) => {
           const pred = visibility[e.slug];
-          // Unknown docs default to visible — better to over-show than hide content
-          // a user might need; admins can update the visibility map.
-          return pred ? pred(roles, can as CanFn) : true;
+          // Unknown docs default to admin-only (seeAll === false here).
+          // The old default of `true` was leaking uncategorised (often
+          // admin-facing) docs to every persona including super-vendor.
+          return pred ? pred(roles, can as CanFn) : false;
         });
     // 2) Filter by search box
     const filtered = visible.filter(matchesSearch);

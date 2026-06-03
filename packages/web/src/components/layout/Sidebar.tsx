@@ -255,8 +255,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       });
     }
 
-    // Vendor branches — vendors manage their warehouses / fitting centers
-    if (isVendor || isAdmin || isSuperVendor) {
+    // Vendor branches — vendors manage their warehouses / fitting centers.
+    // Super-vendors are aggregators, not operators; they don't manage locations
+    // directly and the vendorLocations API rejects non-VENDOR/ADMIN users.
+    if (isVendor || isAdmin) {
       items.push({
         key: '/vendor-locations',
         icon: <ShopOutlined />,
@@ -531,8 +533,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       );
     }
 
-    // Notification preferences — hospital/vendor admins
-    if (isHospital || isVendor || isAdmin) {
+    // Notification preferences — hospital/vendor users only (admin has no tenant scope)
+    if (isHospital || isVendor) {
       items.push({
         key: '/notification-preferences',
         icon: <SettingOutlined />,

@@ -29,8 +29,7 @@ export function useUserRoles() {
       isPhysician: role === 'PHYSICIAN',
 
       // Composite checks
-      isProvider:
-        role === 'PROVIDER_EXECUTIVE_ADMIN' || role === 'PROVIDER_USER',
+      isProvider: userType === 'PROVIDER',
       isClinician: role === 'FACILITY_USER',
       isHospitalAdmin: role === 'FACILITY_ACCOUNT_MANAGER',
       isVendorAdmin: role === 'VENDOR_ACCOUNT_MANAGER',

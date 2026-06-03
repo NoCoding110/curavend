@@ -9,7 +9,7 @@ import {
   PURGE,
   REGISTER,
 } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
+import storageSession from 'redux-persist/lib/storage/session';
 import authReducer from './slices/authSlice';
 import orderReducer from './slices/orderSlice';
 import messageReducer from './slices/messageSlice';
@@ -29,7 +29,7 @@ const rootReducer = combineReducers({
 const persistConfig = {
   key: 'curavend',
   version: 1,
-  storage,
+  storage: storageSession,
   whitelist: ['auth'],
 };
 

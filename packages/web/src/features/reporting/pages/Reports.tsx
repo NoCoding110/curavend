@@ -56,6 +56,8 @@ import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import { get } from '../../../api/client';
 import { useResizableColumns } from '../../../components/table/useResizableColumns';
+import { useUserRoles } from '../../../hooks/useUserRoles';
+import { useAdminHospitalSelect } from '../../../hooks/useAdminHospitalSelect';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -578,22 +580,63 @@ const VendorKpisView: React.FC = () => {
 // VIEW 8 — Unbilled Transactions
 // ═══════════════════════════════════════════════════════════════════════════
 const UnbilledTransactionsView: React.FC = () => {
+  const { isAdmin } = useUserRoles();
+  const adminHospital = useAdminHospitalSelect();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const fetch = useCallback(async () => {
+    if (isAdmin && !adminHospital.selectedId) return;
     setLoading(true);
     try {
-      const r = await get<{ items: any[] }>('/reports/unbilled-transactions');
+      const params: Record<string, any> = {};
+      if (isAdmin && adminHospital.selectedId) params.hospitalId = adminHospital.selectedId;
+      const r = await get<{ items: any[] }>('/reports/unbilled-transactions', params);
       setRows(r.items || []);
     } catch { message.error('Failed to load unbilled transactions.'); }
     finally { setLoading(false); }
-  }, []);
+  }, [isAdmin, adminHospital.selectedId]);
   useEffect(() => { void fetch(); }, [fetch]);
+
+  if (isAdmin && !adminHospital.selectedId) {
+    return (
+      <>
+        <ReportHeader icon={<DollarOutlined />} title="Unbilled Transactions"
+          subtitle="Orders completed but not yet invoiced — possible revenue capture issue." />
+        <Alert type="info" showIcon style={{ marginBottom: 12 }}
+          message="Select a hospital to view this report"
+          description={
+            <Select
+              placeholder="Select hospital…"
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280, marginTop: 8 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          }
+        />
+      </>
+    );
+  }
 
   return (
     <>
       <ReportHeader icon={<DollarOutlined />} title="Unbilled Transactions"
         subtitle="Orders completed but not yet invoiced — possible revenue capture issue." onRefresh={fetch} loading={loading} />
+      {isAdmin && (
+        <Card size="small" style={{ marginBottom: 12 }}>
+          <Space>
+            <Text strong>Hospital:</Text>
+            <Select
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          </Space>
+        </Card>
+      )}
       <Alert type="warning" showIcon style={{ marginBottom: 12 }}
         message="Each row is a COMPLETED order without an associated invoice. Create the invoice in Invoices, or close the order if it was non-billable." />
       <Card>
@@ -615,16 +658,21 @@ const UnbilledTransactionsView: React.FC = () => {
 // VIEW 9 — Compliance Users
 // ═══════════════════════════════════════════════════════════════════════════
 const ComplianceUsersView: React.FC = () => {
+  const { isAdmin } = useUserRoles();
+  const adminHospital = useAdminHospitalSelect();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const fetch = useCallback(async () => {
+    if (isAdmin && !adminHospital.selectedId) return;
     setLoading(true);
     try {
-      const r = await get<{ items: any[] }>('/reports/compliance/users');
+      const params: Record<string, any> = {};
+      if (isAdmin && adminHospital.selectedId) params.hospitalId = adminHospital.selectedId;
+      const r = await get<{ items: any[] }>('/reports/compliance/users', params);
       setRows(r.items || []);
     } catch { message.error('Failed to load user compliance.'); }
     finally { setLoading(false); }
-  }, []);
+  }, [isAdmin, adminHospital.selectedId]);
   useEffect(() => { void fetch(); }, [fetch]);
 
   const totalUsers = rows.length;
@@ -632,10 +680,46 @@ const ComplianceUsersView: React.FC = () => {
   const approvedCount = rows.filter((u) => u.approval_status === 'APPROVED').length;
   const phiCount = rows.filter((u) => u.has_agreed_to_phi_access).length;
 
+  if (isAdmin && !adminHospital.selectedId) {
+    return (
+      <>
+        <ReportHeader icon={<SafetyOutlined />} title="Compliance: Users"
+          subtitle="User MFA enrolment, approval status, and PHI consent across the tenant." />
+        <Alert type="info" showIcon style={{ marginBottom: 12 }}
+          message="Select a hospital to view this report"
+          description={
+            <Select
+              placeholder="Select hospital…"
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280, marginTop: 8 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          }
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <ReportHeader icon={<SafetyOutlined />} title="Compliance: Users"
         subtitle="User MFA enrolment, approval status, and PHI consent across the tenant." onRefresh={fetch} loading={loading} />
+      {isAdmin && (
+        <Card size="small" style={{ marginBottom: 12 }}>
+          <Space>
+            <Text strong>Hospital:</Text>
+            <Select
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          </Space>
+        </Card>
+      )}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col xs={12} md={6}><StatCardWrapper><Statistic title="Total users" value={totalUsers} /></StatCardWrapper></Col>
         <Col xs={12} md={6}><StatCardWrapper><Statistic title="MFA enrolled" value={mfaCount} valueStyle={{ color: '#52c41a' }} /></StatCardWrapper></Col>
@@ -669,16 +753,21 @@ const ComplianceUsersView: React.FC = () => {
 // VIEW 10 — Compliance Credentials
 // ═══════════════════════════════════════════════════════════════════════════
 const ComplianceCredentialsView: React.FC = () => {
+  const { isAdmin } = useUserRoles();
+  const adminHospital = useAdminHospitalSelect();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const fetch = useCallback(async () => {
+    if (isAdmin && !adminHospital.selectedId) return;
     setLoading(true);
     try {
-      const r = await get<{ items: any[] }>('/reports/compliance/credentials');
+      const params: Record<string, any> = {};
+      if (isAdmin && adminHospital.selectedId) params.hospitalId = adminHospital.selectedId;
+      const r = await get<{ items: any[] }>('/reports/compliance/credentials', params);
       setRows(r.items || []);
     } catch { message.error('Failed to load vendor credentials.'); }
     finally { setLoading(false); }
-  }, []);
+  }, [isAdmin, adminHospital.selectedId]);
   useEffect(() => { void fetch(); }, [fetch]);
 
   const expiredFlag = (v: any) => {
@@ -687,10 +776,46 @@ const ComplianceCredentialsView: React.FC = () => {
     return <Tag color={expired ? 'red' : 'green'}>{v}</Tag>;
   };
 
+  if (isAdmin && !adminHospital.selectedId) {
+    return (
+      <>
+        <ReportHeader icon={<SafetyOutlined />} title="Compliance: Vendor Credentials"
+          subtitle="Vendor accreditation, license, and insurance expiry dates. Red = expired." />
+        <Alert type="info" showIcon style={{ marginBottom: 12 }}
+          message="Select a hospital to view this report"
+          description={
+            <Select
+              placeholder="Select hospital…"
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280, marginTop: 8 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          }
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <ReportHeader icon={<SafetyOutlined />} title="Compliance: Vendor Credentials"
         subtitle="Vendor accreditation, license, and insurance expiry dates. Red = expired." onRefresh={fetch} loading={loading} />
+      {isAdmin && (
+        <Card size="small" style={{ marginBottom: 12 }}>
+          <Space>
+            <Text strong>Hospital:</Text>
+            <Select
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          </Space>
+        </Card>
+      )}
       <Card>
         <Table size="middle" rowKey="id" loading={loading} dataSource={rows} pagination={{ pageSize: 25 }}
           columns={[

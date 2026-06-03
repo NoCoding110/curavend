@@ -205,7 +205,7 @@ const Message: React.FC = () => {
       const mapped: ChatRoom[] = raw
         .map((r: any) => ({
           id: r.id ?? r._id,
-          name: r.name ?? r.title ?? r.orderId ?? r.id,
+          name: r.displayName ?? r.name ?? r.title ?? r.orderId ?? r.id,
           orderId: r.orderId ?? r.order?.id ?? '',
           lastMessage: r.lastMessage?.content ?? r.lastMessagePreview ?? '',
           updatedAt: r.updatedAt ?? r.lastMessage?.createdAt ?? '',

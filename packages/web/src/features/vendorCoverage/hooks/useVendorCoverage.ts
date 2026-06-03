@@ -94,12 +94,16 @@ export interface CoverageVendorDetail {
 export function useVendorCoverageMatrix(
   activeOnly = true,
   byCategory = false,
+  hospitalId?: string,
+  /** When true the hook makes no API call and returns empty state immediately. */
+  skip = false,
 ) {
   const [data, setData] = useState<CoverageMatrix | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchMatrix = useCallback(async () => {
+    if (skip) return;
     setLoading(true);
     setError(null);
     try {
@@ -107,6 +111,7 @@ export function useVendorCoverageMatrix(
         activeOnly: activeOnly ? 1 : 0,
       };
       if (byCategory) params.byCategory = 1;
+      if (hospitalId) params.hospitalId = hospitalId;
       const res = await get<CoverageMatrix>('/vendor-coverage', params);
       setData(res);
     } catch (err: any) {
@@ -114,7 +119,7 @@ export function useVendorCoverageMatrix(
     } finally {
       setLoading(false);
     }
-  }, [activeOnly, byCategory]);
+  }, [activeOnly, byCategory, hospitalId, skip]);
 
   useEffect(() => {
     fetchMatrix();

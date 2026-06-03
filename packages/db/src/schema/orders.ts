@@ -94,6 +94,8 @@ export const orders = sqliteTable(
     epicConnectionId: text("epic_connection_id"),
     /** Epic FHIR Patient.id this order's patient maps to. */
     fhirPatientId: text("fhir_patient_id"),
+    // Gap 2: approverUserId + fhirEncounterId live in order_approval_meta sidecar table
+    // (migration 0024) — the orders table is at D1's ALTER TABLE column limit.
     vendorId: text("vendor_id"),
     vendorReferenceNumber: text("vendor_reference_number"),
     vendorOpened: integer("vendor_opened").default(0),

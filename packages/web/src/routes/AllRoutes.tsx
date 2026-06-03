@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Spin } from 'antd';
 import PrivateRoute from './PrivateRoute';
+import RoleGuard from './RoleGuard';
 import MainLayout from '../layouts/MainLayout';
 import FullPageLayout from '../layouts/FullPageLayout';
 
@@ -149,7 +150,6 @@ const HospitalsPage = lazy(() => import('../features/hospitals/pages/HospitalsPa
 const MfaSetup = lazy(() => import('../features/auth/pages/MfaSetup'));
 const FirstLoginPasswordChange = lazy(() => import('../features/auth/pages/FirstLoginPasswordChange'));
 const PhiConsent = lazy(() => import('../features/auth/pages/PhiConsent'));
-const NotificationPreferences = lazy(() => import('../features/profile/pages/NotificationPreferences'));
 const CreateVendor = lazy(() => import('../features/userManagement/pages/CreateVendor'));
 const CreateProvider = lazy(() => import('../features/userManagement/pages/CreateProvider'));
 const HospitalFacilities = lazy(() => import('../features/hospitalManagement/pages/HospitalFacilities'));
@@ -194,14 +194,18 @@ const AllRoutes: React.FC = () => {
             </PrivateRoute>
           }
         >
+          {/* ── Routes accessible to all authenticated personas ─────────────── */}
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/setting" element={<Setting />} />
-          <Route path="/provider-orders" element={<SupplyOrder />} />
-          <Route
-            path="/provider-orders/:orderId"
-            element={<SupplyOrderDetail />}
-          />
+          {/* /provider-orders is for hospital / vendor / admin / super-vendor / provider.
+              LAB users have their own portal at /labs and should not land here. */}
+          <Route element={<RoleGuard allowedUserTypes={['HOSPITAL', 'VENDOR', 'ADMIN', 'SUPER_VENDOR', 'PROVIDER']} />}>
+            <Route path="/provider-orders" element={<SupplyOrder />} />
+            <Route
+              path="/provider-orders/:orderId"
+              element={<SupplyOrderDetail />}
+            />
+          </Route>
           <Route path="/create-order" element={<CreateSupplyOrder />} />
           <Route path="/create-order/:orderId" element={<CreateSupplyOrder />} />
           <Route path="/dispense-product" element={<DispenseProduct />} />
@@ -216,10 +220,7 @@ const AllRoutes: React.FC = () => {
           />
           <Route path="/chat" element={<Message />} />
           <Route path="/reporting/:reportId" element={<Reports />} />
-          <Route
-            path="/inventory-management"
-            element={<InventoryManagement />}
-          />
+          {/* inventory-management guarded below — VENDOR+ADMIN+SUPER_VENDOR only */}
           <Route path="/contract-pricing" element={<ContractPricing />} />
           <Route path="/contracts/new" element={<AddContractWizard />} />
           <Route path="/contracts/:id" element={<ContractDetailPage />} />
@@ -233,7 +234,6 @@ const AllRoutes: React.FC = () => {
           <Route path="/sku-groups" element={<SkuGroups />} />
           <Route path="/price-lookup" element={<PriceLookup />} />
           <Route path="/notification-preferences" element={<NotificationPreferencesPage />} />
-          <Route path="/admin/integration-log" element={<IntegrationLog />} />
           <Route path="/facility-vendors" element={<HospitalVendors />} />
           <Route path="/vendor-coverage" element={<VendorCoverage />} />
           <Route path="/help-and-support" element={<SupportAndHelp />} />
@@ -243,14 +243,11 @@ const AllRoutes: React.FC = () => {
           />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/encounter/:orderId" element={<EncounterPage />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/approvals" element={<UserApprovalQueue />} />
-          <Route path="/admin/file-access-log" element={<FileAccessLog />} />
           <Route path="/approvals" element={<ApprovalsQueue />} />
-          <Route path="/subscription" element={<SubscriptionPlans />} />
           <Route path="/purchase-orders" element={<PurchaseOrders />} />
+          <Route path="/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
           <Route path="/consignment" element={<ConsignmentClosets />} />
-          <Route path="/vendors" element={<VendorsPage />} />
+          {/* /vendors is intentionally placed inside admin group below */}
           <Route path="/vendor-locations" element={<VendorLocations />} />
           <Route path="/vendor-skus" element={<VendorSkuCatalog />} />
           <Route path="/stock-feeds" element={<VendorStockConnectors />} />
@@ -259,63 +256,84 @@ const AllRoutes: React.FC = () => {
           <Route path="/mfa-setup" element={<MfaSetup />} />
           <Route path="/first-login" element={<FirstLoginPasswordChange />} />
           <Route path="/phi-consent" element={<PhiConsent />} />
-          <Route path="/notification-preferences" element={<NotificationPreferences />} />
+          <Route path="/setting" element={<Setting />} />
           <Route path="/create-vendor" element={<CreateVendor />} />
           <Route path="/create-provider" element={<CreateProvider />} />
-          <Route path="/hospital-facilities" element={<HospitalFacilities />} />
-          <Route path="/hospital-departments" element={<HospitalDepartments />} />
-          <Route path="/hospital-physicians" element={<HospitalPhysicians />} />
-          {/* Lab portal */}
-          <Route path="/labs" element={<LabDashboard />} />
-          <Route path="/labs/orders" element={<LabOrders />} />
-          <Route path="/labs/orders/new" element={<CreateLabOrder />} />
-          <Route path="/labs/orders/:id" element={<LabOrderDetail />} />
-          <Route path="/labs/groups" element={<LabGroupsPage />} />
-          <Route path="/labs/kit-sites" element={<LabKitSitesPage />} />
-          <Route path="/admin/workflows" element={<WorkflowsAdmin />} />
-          <Route path="/admin/gpo-contracts" element={<GpoContracts />} />
-          <Route path="/admin/payors" element={<PayorsPage />} />
-          <Route path="/reporting/forecast" element={<ForecastPage />} />
+          <Route path="/help-center" element={<HelpCenterPage />} />
           <Route path="/prior-auths" element={<PriorAuthsPage />} />
-          <Route path="/admin/ehr-connections" element={<EhrConnectionsPage />} />
-          <Route path="/admin/formulary" element={<FormularyPage />} />
           <Route path="/requisitions" element={<RequisitionsPage />} />
           <Route path="/requisition-templates" element={<RequisitionTemplatesPage />} />
-          <Route path="/admin/approval-rules" element={<ApprovalRulesPage />} />
           <Route path="/goods-receipts" element={<GoodsReceiptsPage />} />
           <Route path="/match-exceptions" element={<MatchExceptionsPage />} />
-          <Route path="/reporting/multi-site-spend" element={<MultiSiteSpendPage />} />
-          <Route path="/reporting/contract-leakage" element={<ContractLeakagePage />} />
-          <Route path="/help-center" element={<HelpCenterPage />} />
-          <Route path="/create-dme-order" element={<CreateDmeOrderPage />} />
-          <Route path="/admin/lcd-ingest" element={<LcdIngestPage />} />
-          <Route path="/admin/dmepos-compliance" element={<DmeposCompliancePage />} />
-          <Route path="/labs/inventory" element={<LabInventoryPage />} />
-          <Route path="/labs/test-mappings" element={<TestConsumableMapPage />} />
-          <Route path="/labs/audit" element={<LabAuditLogPage />} />
-          <Route path="/admin/lab-backfill" element={<LabBackfillPage />} />
-          <Route path="/admin/budgets" element={<BudgetsPage />} />
-          <Route path="/reporting/department-spend" element={<DepartmentSpendPage />} />
-          <Route path="/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
-          <Route path="/admin/gl-ledger" element={<GlLedgerPage />} />
-          <Route path="/admin/supplier-onboarding" element={<SupplierOnboardingPage />} />
-          <Route path="/admin/compliance-dashboard" element={<ComplianceDashboardPage />} />
-          <Route path="/admin/item-master-hygiene" element={<ItemMasterHygienePage />} />
-          <Route path="/admin/invoice-match-rules" element={<InvoiceMatchRulesPage />} />
           <Route path="/rmas" element={<RmasPage />} />
           <Route path="/backorders/triage" element={<BackorderTriagePage />} />
           <Route path="/point-of-use" element={<PointOfUsePage />} />
           <Route path="/logistics" element={<LogisticsPage />} />
-          <Route path="/reporting/cross-site-inventory" element={<CrossSiteInventoryPage />} />
-          <Route path="/admin/emergency-review" element={<EmergencyReviewQueuePage />} />
-          <Route path="/admin/recalls" element={<RecallsPage />} />
-          <Route path="/admin/controlled-substance" element={<ControlledSubstancePage />} />
           <Route path="/inventory-transfers" element={<InventoryTransfersPage />} />
+          <Route path="/create-dme-order" element={<CreateDmeOrderPage />} />
+          <Route path="/reporting/multi-site-spend" element={<MultiSiteSpendPage />} />
+          <Route path="/reporting/contract-leakage" element={<ContractLeakagePage />} />
+          <Route path="/reporting/department-spend" element={<DepartmentSpendPage />} />
+          <Route path="/reporting/cross-site-inventory" element={<CrossSiteInventoryPage />} />
           <Route path="/reporting/vendor-scorecards" element={<VendorScorecardsPage />} />
           <Route path="/reporting/hospital-forecast" element={<HospitalForecastPage />} />
           <Route path="/reporting/charge-capture-leakage" element={<ChargeCaptureLeakagePage />} />
           <Route path="/reporting/price-variance" element={<PriceVariancePage />} />
           <Route path="/reporting/clinical-consumption" element={<ClinicalConsumptionPage />} />
+          <Route path="/reporting/forecast" element={<ForecastPage />} />
+
+          {/* ── VENDOR + ADMIN + SUPER_VENDOR — Inventory management ──────────── */}
+          <Route element={<RoleGuard allowedUserTypes={['VENDOR', 'ADMIN', 'SUPER_VENDOR']} />}>
+            <Route path="/inventory-management" element={<InventoryManagement />} />
+          </Route>
+
+          {/* ── HOSPITAL + ADMIN — EHR connections, hospital management ─────── */}
+          <Route element={<RoleGuard allowedUserTypes={['HOSPITAL', 'ADMIN']} />}>
+            <Route path="/admin/ehr-connections" element={<EhrConnectionsPage />} />
+            <Route path="/hospital-facilities" element={<HospitalFacilities />} />
+            <Route path="/hospital-departments" element={<HospitalDepartments />} />
+            <Route path="/hospital-physicians" element={<HospitalPhysicians />} />
+          </Route>
+
+          {/* ── LAB + ADMIN — Lab portal ─────────────────────────────────────── */}
+          <Route element={<RoleGuard allowedUserTypes={['LAB', 'ADMIN']} />}>
+            <Route path="/labs" element={<LabDashboard />} />
+            <Route path="/labs/orders" element={<LabOrders />} />
+            <Route path="/labs/orders/new" element={<CreateLabOrder />} />
+            <Route path="/labs/orders/:id" element={<LabOrderDetail />} />
+            <Route path="/labs/groups" element={<LabGroupsPage />} />
+            <Route path="/labs/kit-sites" element={<LabKitSitesPage />} />
+            <Route path="/labs/inventory" element={<LabInventoryPage />} />
+            <Route path="/labs/test-mappings" element={<TestConsumableMapPage />} />
+            <Route path="/labs/audit" element={<LabAuditLogPage />} />
+          </Route>
+
+          {/* ── ADMIN-ONLY — Platform management + admin config ──────────────── */}
+          <Route element={<RoleGuard allowedUserTypes={['ADMIN']} />}>
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/vendors" element={<VendorsPage />} />
+            <Route path="/admin/approvals" element={<UserApprovalQueue />} />
+            <Route path="/admin/file-access-log" element={<FileAccessLog />} />
+            <Route path="/admin/integration-log" element={<IntegrationLog />} />
+            <Route path="/admin/workflows" element={<WorkflowsAdmin />} />
+            <Route path="/admin/gpo-contracts" element={<GpoContracts />} />
+            <Route path="/admin/payors" element={<PayorsPage />} />
+            <Route path="/admin/formulary" element={<FormularyPage />} />
+            <Route path="/admin/approval-rules" element={<ApprovalRulesPage />} />
+            <Route path="/admin/dmepos-compliance" element={<DmeposCompliancePage />} />
+            <Route path="/admin/lcd-ingest" element={<LcdIngestPage />} />
+            <Route path="/admin/lab-backfill" element={<LabBackfillPage />} />
+            <Route path="/admin/budgets" element={<BudgetsPage />} />
+            <Route path="/admin/gl-ledger" element={<GlLedgerPage />} />
+            <Route path="/admin/supplier-onboarding" element={<SupplierOnboardingPage />} />
+            <Route path="/admin/compliance-dashboard" element={<ComplianceDashboardPage />} />
+            <Route path="/admin/item-master-hygiene" element={<ItemMasterHygienePage />} />
+            <Route path="/admin/invoice-match-rules" element={<InvoiceMatchRulesPage />} />
+            <Route path="/admin/emergency-review" element={<EmergencyReviewQueuePage />} />
+            <Route path="/admin/recalls" element={<RecallsPage />} />
+            <Route path="/admin/controlled-substance" element={<ControlledSubstancePage />} />
+            <Route path="/subscription" element={<SubscriptionPlans />} />
+          </Route>
         </Route>
 
         {/* Catch-all */}

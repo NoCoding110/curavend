@@ -50,11 +50,13 @@ const ENTITY_COLORS: Record<string, string> = {
 };
 
 const STATE_LABELS: Record<string, { label: string; color: string }> = {
-  NEW_ORDER:                  { label: 'Needs vendor',       color: 'orange' },
-  ORDER_REQUESTED_FOR_MODIFY: { label: 'Vendor requested mod', color: 'gold' },
+  NEW_ORDER:                  { label: 'Needs vendor',          color: 'orange' },
+  ORDER_REQUESTED_FOR_MODIFY: { label: 'Vendor requested mod',  color: 'gold' },
   VENDOR_ASSIGNED:            { label: 'Awaiting vendor confirm', color: 'cyan' },
-  PENDING:                    { label: 'Account pending',     color: 'magenta' },
-  PENDING_APPROVAL:           { label: 'Contract review',     color: 'gold' },
+  PENDING:                    { label: 'Account pending',        color: 'magenta' },
+  // PENDING_APPROVAL is shared by orders (approval-rules engine) and contracts.
+  // "Approval required" is intentionally generic to cover both entity types.
+  PENDING_APPROVAL:           { label: 'Approval required',     color: 'gold' },
 };
 
 const ApprovalsQueue: React.FC = () => {
@@ -71,7 +73,7 @@ const ApprovalsQueue: React.FC = () => {
   const [reason, setReason] = useState('');
   const [acting, setActing] = useState(false);
 
-  // Vendor picker modal — shown when approving a NEW_ORDER
+  // Vendor picker modal — shown when approving a NEW_ORDER or a PENDING_APPROVAL order
   const [vendorModal, setVendorModal] = useState<{
     open: boolean;
     item?: ApprovalQueueItem;
@@ -107,8 +109,12 @@ const ApprovalsQueue: React.FC = () => {
       navigate(`/contracts/${item.entityId}`);
       return;
     }
-    // Orders in NEW_ORDER need a vendor confirmed — show picker
-    if (item.entityType === 'order' && item.pendingState === 'NEW_ORDER') {
+    // Orders in NEW_ORDER or PENDING_APPROVAL need a vendor confirmed — show picker.
+    // PENDING_APPROVAL means the order was routed through the approval-rules engine;
+    // it may already have a vendorId (pre-selected in the wizard) but the approver
+    // can confirm or change it. The backend throws a ValidationError if neither the
+    // existing order.vendorId nor a vendorId from the request body is present.
+    if (item.entityType === 'order' && (item.pendingState === 'NEW_ORDER' || item.pendingState === 'PENDING_APPROVAL')) {
       setSelectedVendorId(item.vendorId ?? undefined);
       setVendorModal({ open: true, item });
       // Fetch only this hospital's approved vendors so the manager
@@ -344,7 +350,7 @@ const ApprovalsQueue: React.FC = () => {
         />
       </Modal>
 
-      {/* Vendor assignment modal — shown when approving a NEW_ORDER */}
+      {/* Vendor assignment modal — shown when approving a NEW_ORDER or PENDING_APPROVAL order */}
       <Modal
         open={vendorModal.open}
         title="Approve order — assign vendor"

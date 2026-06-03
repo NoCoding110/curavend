@@ -27,6 +27,7 @@ import {
 import { ValidationError, NotFoundError, ForbiddenError } from '../lib/errors';
 import { rbac } from '../middleware/rbac';
 import { logPhiAccess } from '../services/phiAuditService';
+import { getPriorAuthProvider } from '../services/payorProviders';
 import type { Env } from '../lib/env';
 import type { AuthUser } from '../middleware/auth';
 
@@ -281,7 +282,26 @@ app.post('/:id/transition', rbac(...MANAGER_OR_USER), async (c) => {
 
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = { status: body.toStatus, statusReason: body.reason ?? null, updatedAt: now, lastEditedBy: caller.id };
-  if (body.toStatus === 'SUBMITTED' && !row.submittedAt) patch.submittedAt = now;
+  if (body.toStatus === 'SUBMITTED' && !row.submittedAt) {
+    patch.submittedAt = now;
+    // Call PA submission provider (stub generates SIM- ref)
+    try {
+      const paProvider = getPriorAuthProvider(c.env);
+      const submitResult = await paProvider.submit({
+        priorAuthId: id,
+        hcpcCode: row.hcpcCode,
+        patientName: row.patientName,
+        patientDob: row.patientDob ?? undefined,
+        patientMemberId: row.payorMemberId ?? undefined,
+        icd10Codes: row.icd10Codes ? JSON.parse(row.icd10Codes) : [],
+        clinicalNote: row.clinicalNote ?? undefined,
+      });
+      patch.submissionExternalRef = submitResult.externalRef;
+      patch.submissionSimulated = submitResult.simulated ? 1 : 0;
+    } catch (err) {
+      console.warn('[priorAuths] PA submission provider error:', err);
+    }
+  }
   if (body.toStatus === 'APPROVED' || body.toStatus === 'DENIED') patch.decisionAt = now;
   if (body.authNumber !== undefined) patch.authNumber = body.authNumber;
   if (body.quantityApproved !== undefined) patch.quantityApproved = body.quantityApproved;

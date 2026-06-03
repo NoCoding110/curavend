@@ -2,25 +2,32 @@
  * Price variance — bought price vs contract price.
  */
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Card, Col, Row, Space, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, Row, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd';
 import { DollarOutlined, ReloadOutlined, WarningOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { get } from '../../../api/client';
+import { useUserRoles } from '../../../hooks/useUserRoles';
+import { useAdminHospitalSelect } from '../../../hooks/useAdminHospitalSelect';
 
 const { Title, Text } = Typography;
 const PageWrap = styled.div`padding: 24px;`;
 
 const PriceVariancePage: React.FC = () => {
+  const { isAdmin } = useUserRoles();
+  const adminHospital = useAdminHospitalSelect();
   const [items, setItems] = useState<any[]>([]);
   const [rollup, setRollup] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [forbidden, setForbidden] = useState(false);
 
   const load = async () => {
+    if (isAdmin && !adminHospital.selectedId) return;
     setLoading(true);
     setForbidden(false);
     try {
-      const r = await get<any>('/reporting/price-variance');
+      const params: Record<string, any> = {};
+      if (isAdmin && adminHospital.selectedId) params.hospitalId = adminHospital.selectedId;
+      const r = await get<any>('/reporting/price-variance', params);
       setItems(r.items ?? []);
       setRollup(r.rollup ?? []);
     } catch (err: any) {
@@ -28,13 +35,47 @@ const PriceVariancePage: React.FC = () => {
       else { message.error(err?.response?.data?.error ?? 'Failed'); }
     } finally { setLoading(false); }
   };
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [adminHospital.selectedId]);
 
   const totalOverpay = items.reduce((s, r) => s + Math.max(0, Number(r.delta_total ?? 0)), 0);
   const totalUnderpay = items.reduce((s, r) => s + Math.min(0, Number(r.delta_total ?? 0)), 0);
 
+  if (isAdmin && !adminHospital.selectedId) {
+    return (
+      <PageWrap>
+        <Alert type="info" showIcon style={{ marginBottom: 16 }}
+          message="Select a hospital to view this report"
+          description={
+            <Select
+              placeholder="Select hospital…"
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280, marginTop: 8 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          }
+        />
+      </PageWrap>
+    );
+  }
+
   return (
     <PageWrap>
+      {isAdmin && (
+        <Card size="small" style={{ marginBottom: 12 }}>
+          <Space>
+            <span>Hospital:</span>
+            <Select
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          </Space>
+        </Card>
+      )}
       {forbidden && (
         <Alert type="warning" showIcon style={{ marginBottom: 16 }}
           message="Hospital context required"

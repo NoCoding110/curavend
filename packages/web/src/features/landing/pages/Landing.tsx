@@ -2,6 +2,7 @@
 import styled, { createGlobalStyle } from 'styled-components';
 import { ScrollProvider } from '../lib/scrollProvider';
 import { AuthedBanner } from '../components/AuthedBanner';
+import { LandingNav } from '../components/LandingNav';
 import { Hero } from '../components/Hero';
 import { TrustStrip } from '../components/TrustStrip';
 import { Personas } from '../components/Personas';
@@ -54,16 +55,17 @@ export const Landing: React.FC = () => {
   return (
     <ScrollProvider>
       <GlobalLanding />
+      <LandingNav />
       <AuthedBanner />
       <Hero />
       <TrustStrip />
-      <Personas />
+      <div id="features"><Personas /></div>
       <LifecycleFlow />
       <VendorRouting />
       <PricingCascade />
       <LabPortalFan />
-      <SecuritySection />
-      <IntegrationsGrid />
+      <div id="security"><SecuritySection /></div>
+      <div id="integrations"><IntegrationsGrid /></div>
       <Stats />
       <CTAStrip />
       <LandingFooter />

@@ -13,9 +13,9 @@
  * row before mutating or returning it.
  */
 import { Hono } from 'hono';
-import { eq, desc, and, or } from 'drizzle-orm';
+import { eq, desc, and, or, inArray } from 'drizzle-orm';
 import { getDb } from '../lib/db';
-import { purchaseOrders, purchaseOrderItems, poTransmissionLog } from '@curavend/db';
+import { purchaseOrders, purchaseOrderItems, poTransmissionLog, vendors } from '@curavend/db';
 import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors';
 import { requirePermission } from '../middleware/requirePermission';
 import type { Env } from '../lib/env';
@@ -28,20 +28,38 @@ function isAdmin(u: AuthUser): boolean {
   return u.role === 'ACCOUNT_MANAGER' || u.role === 'ACCOUNT_MANAGER_USER';
 }
 
+/** Resolve sub-vendor IDs for a super-vendor user. */
+async function resolveSVSubVendorIds(db: any, u: AuthUser): Promise<string[]> {
+  if (!u.superVendorId) return [];
+  const rows = await db
+    .select({ id: vendors.id })
+    .from(vendors)
+    .where(eq(vendors.superVendorId, u.superVendorId));
+  return rows.map((r: any) => r.id);
+}
+
 /**
  * Returns the tenant-scope conditions for list queries, or null for admin.
  * Throws when the persona has no valid scope (hospital/vendor/super-vendor).
+ * @param svSubIds  Pre-resolved sub-vendor IDs for SUPER_VENDOR users.
  */
-function tenantListConds(u: AuthUser): any[] | null {
+function tenantListConds(u: AuthUser, svSubIds?: string[]): any[] | null {
   if (isAdmin(u)) return null;
   const conds: any[] = [];
   if (u.vendorId) conds.push(eq(purchaseOrders.vendorId, u.vendorId));
-  if (u.superVendorId) conds.push(eq(purchaseOrders.superVendorId, u.superVendorId));
+  if (u.superVendorId) {
+    // Fan-out: any PO whose vendorId belongs to one of our sub-vendors
+    if (svSubIds && svSubIds.length > 0) {
+      conds.push(inArray(purchaseOrders.vendorId, svSubIds));
+    }
+    // Also match POs explicitly stamped with this super_vendor_id
+    conds.push(eq(purchaseOrders.superVendorId, u.superVendorId));
+  }
   if (u.hospitalId) conds.push(eq(purchaseOrders.hospitalId, u.hospitalId));
   if (conds.length === 0) {
     throw new ForbiddenError('Purchase orders are restricted to hospital / vendor personas');
   }
-  // OR the conditions — a super-vendor user with a hospitalId would see either.
+  // OR the conditions — a super-vendor user may match via vendorId OR superVendorId.
   return [conds.length === 1 ? conds[0] : or(...conds)!];
 }
 
@@ -63,7 +81,8 @@ app.get('/', requirePermission('purchase-orders', 'READ'), async (c) => {
   const db = getDb(c.env.DB);
   const user = c.get('user');
   const { limit = '50', offset = '0' } = c.req.query();
-  const conds = tenantListConds(user);
+  const svSubIds = await resolveSVSubVendorIds(db, user);
+  const conds = tenantListConds(user, svSubIds);
 
   let query: any = db.select().from(purchaseOrders);
   if (conds) query = query.where(and(...conds));

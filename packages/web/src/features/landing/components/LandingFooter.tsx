@@ -12,10 +12,11 @@ const Inner = styled.div`
   max-width: 1200px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
   gap: 40px;
   margin-bottom: 48px;
-  @media(max-width: 768px) { grid-template-columns: 1fr 1fr; }
+  @media(max-width: 900px) { grid-template-columns: 1fr 1fr 1fr; }
+  @media(max-width: 640px) { grid-template-columns: 1fr 1fr; }
   @media(max-width: 480px) { grid-template-columns: 1fr; }
 `;
 
@@ -89,6 +90,19 @@ export const LandingFooter: React.FC = () => (
           <a href="#features">Features</a>
           <a href="#security">Security</a>
           <a href="#integrations">Integrations</a>
+        </ColLinks>
+      </div>
+      <div>
+        <ColTitle>Docs</ColTitle>
+        <ColLinks>
+          <a
+            href="/docs/platform-reference.docx"
+            download="Curavend_Platform_Page_Reference.docx"
+          >
+            Platform Reference ↓
+          </a>
+          <Link to="/help-center">Help Center</Link>
+          <Link to="/faq">FAQ</Link>
         </ColLinks>
       </div>
       <div>

@@ -58,6 +58,20 @@ export const turnstile = (
       return;
     }
 
+    // CI / integration-test bypass ─────────────────────────────────────────
+    // Only active when TURNSTILE_SKIP_SECRET is configured in the worker env
+    // (set it in preview/staging, NEVER in production). The caller must present
+    // the matching value in the `x-turnstile-skip` request header.
+    // Using Cloudflare's public test-mode keys is an equivalent alternative.
+    const skipSecret = (env as any).TURNSTILE_SKIP_SECRET as string | undefined;
+    if (skipSecret) {
+      const skipHeader = c.req.header('x-turnstile-skip') || '';
+      if (skipHeader && skipHeader === skipSecret) {
+        await next();
+        return;
+      }
+    }
+
     const token = c.req.header('cf-turnstile-token') || '';
     if (!token) {
       return c.json(

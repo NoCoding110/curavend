@@ -101,3 +101,5 @@ export * from "./controlledSubstanceLog";
 export * from "./substitutionAuditLog";
 export * from "./vendorScorecardSnapshots";
 export * from "./hospitalForecastRuns";
+export * from "./ehrWriteLog";
+export * from "./orderApprovalMeta";

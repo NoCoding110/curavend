@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, like, desc, asc, and, sql, or } from 'drizzle-orm';
+import { eq, like, desc, asc, and, sql, or, inArray } from 'drizzle-orm';
 import { getDb } from '../lib/db';
 import { orders, orderItems, orderHistory, vendors, hospitals, hospitalFacilities, hospitalDepartments, users } from '@curavend/db';
 import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors';
@@ -8,7 +8,8 @@ import { requirePermission } from '../middleware/requirePermission';
 import type { Env } from '../lib/env';
 import { InvoiceService } from '../services/invoiceService';
 import { logPhiAccess } from '../services/phiAuditService';
-import { getContractRatesBulk } from '../lib/contractPricing';
+import { resolvePricesBulk } from '../lib/priceResolver';
+import { resolveApprovers } from '../services/approvalRuleEngine';
 import { mintOrderNumber } from '../lib/sequenceMinter';
 import { customerPurchaseOrders, orderContacts, vendorItemSkus, orderStickers, fileAccessLog } from '@curavend/db';
 
@@ -42,11 +43,14 @@ export function assertOrderAccess(user: any, order: { hospitalId?: string | null
     if (order.vendorId !== user.vendorId) throw new ForbiddenError('Access denied');
     return; // vendor users only scoped by vendorId
   }
-  // Provider / SuperVendor users
+  // Provider users
   if (user.providerId && order.providerId !== user.providerId) {
     throw new ForbiddenError('Access denied');
   }
-  if (user.superVendorId && order.superVendorId !== user.superVendorId) {
+  // Super-vendor users: block only if superVendorId is explicitly set to a
+  // different super-vendor. NULL means the column was never populated (legacy
+  // / seed data) — in that case list-level scoping via vendorId is the guard.
+  if (user.superVendorId && order.superVendorId !== null && order.superVendorId !== user.superVendorId) {
     throw new ForbiddenError('Access denied');
   }
 }
@@ -86,10 +90,22 @@ const listOrdersHandler = async (c: any) => {
     } else if (user.userType === 'VENDOR') {
       // Vendor users see all orders assigned to their vendor only
       conditions.push(eq(orders.vendorId, user.vendorId));
+    } else if (user.userType === 'SUPER_VENDOR' && user.superVendorId) {
+      // Super-vendor sees orders for all their affiliated sub-vendors.
+      // Note: orders.superVendorId is often NULL on legacy rows, so we fan-out
+      // through vendors.superVendorId instead of matching the column directly.
+      const subVendors = await db
+        .select({ id: vendors.id })
+        .from(vendors)
+        .where(eq(vendors.superVendorId, user.superVendorId));
+      const subVendorIds = subVendors.map((v: any) => v.id);
+      if (subVendorIds.length === 0) {
+        return c.json({ items: [], total: 0 });
+      }
+      conditions.push(inArray(orders.vendorId, subVendorIds));
     } else {
-      // Provider / SuperVendor users scope by their entity
+      // Provider users scope by their entity
       if (user.providerId) conditions.push(eq(orders.providerId, user.providerId));
-      if (user.superVendorId) conditions.push(eq(orders.superVendorId, user.superVendorId));
     }
   }
 
@@ -417,37 +433,33 @@ app.post('/', requirePermission('orders', 'WRITE'), async (c) => {
         createdAt: now,
         updatedAt: now,
       });
-      // Child order items — apply contract pricing (CONTRACT > MEDICARE > MANUAL)
+      // Child order items — full pricing cascade CONTRACT > GPO > FEE_SCHEDULE > MEDICARE > MANUAL
       if (Array.isArray(split.orderItems) && split.orderItems.length) {
         const childCodes: string[] = split.orderItems
           .map((it: any) => it.code ?? it.hcpcCode)
           .filter((c: any) => typeof c === 'string' && c.length > 0);
-        const splitRates = body.hospitalId && split.vendorId
-          ? await getContractRatesBulk(c.env.DB, body.hospitalId, split.vendorId, childCodes)
-          : new Map();
+        // Look up fee schedule for this child vendor
+        let splitFeeScheduleId: string | null = null;
+        if (body.hospitalId && split.vendorId) {
+          const sfRaw: any = await db.run(sql`SELECT custom_fee_schedule_id FROM hospital_vendors WHERE hospital_id = ${body.hospitalId} AND vendor_id = ${split.vendorId} LIMIT 1`);
+          const sfRow = sfRaw?.results?.[0] ?? sfRaw?.[0];
+          splitFeeScheduleId = sfRow?.custom_fee_schedule_id ?? null;
+        }
+        const splitPriceMap = await resolvePricesBulk(c.env.DB, {
+          hospitalId: body.hospitalId,
+          vendorId: split.vendorId,
+          codes: childCodes,
+          feeScheduleId: splitFeeScheduleId,
+        });
 
         for (const item of split.orderItems) {
           const hcpc = item.code ?? item.hcpcCode ?? null;
-          let unitPrice: number | null = null;
-          let medicareFee: number | null = null;
-          let priceSource: 'CONTRACT' | 'MEDICARE' | 'MANUAL' = 'MANUAL';
-          let sourceContractId: string | null = null;
-          if (hcpc) {
-            const feeRaw: any = await db.run(sql`
-              SELECT non_rural_rate FROM medicare_fee_schedule_items WHERE hcpc_code = ${hcpc} LIMIT 1
-            `);
-            const feeRow = feeRaw.results?.[0] ?? feeRaw[0];
-            medicareFee = feeRow?.non_rural_rate ?? null;
-            const contractMatch = splitRates.get(hcpc);
-            if (contractMatch) {
-              unitPrice = contractMatch.rate;
-              priceSource = 'CONTRACT';
-              sourceContractId = contractMatch.contractId;
-            } else if (medicareFee != null) {
-              unitPrice = medicareFee;
-              priceSource = 'MEDICARE';
-            }
-          }
+          const resolved = hcpc ? splitPriceMap.get(hcpc) : undefined;
+          const unitPrice = resolved?.unitPrice ?? null;
+          const medicareFee = resolved?.medicareFee ?? null;
+          const priceSource: string = resolved?.priceSource ?? 'MANUAL';
+          const sourceContractId = resolved?.contractId ?? null;
+
           const itemId = crypto.randomUUID();
           await db.run(sql`
             INSERT INTO order_items
@@ -576,46 +588,33 @@ app.post('/', requirePermission('orders', 'WRITE'), async (c) => {
   });
 
   // Create order items — hospital-requested items land in the ASSESSMENT
-  // section. Price-source priority: CONTRACT > FEE_SCHEDULE > MEDICARE > MANUAL.
-  // We bulk-fetch contract rates once for the (hospital, vendor) pair to avoid
-  // an N+1 query, then apply per-item with Medicare fallback.
+  // section. Price-source priority: CONTRACT > GPO_CONTRACT > FEE_SCHEDULE > MEDICARE > MANUAL.
+  // We bulk-resolve prices once for the (hospital, vendor) pair to avoid N+1 queries.
   if (body.orderItems?.length) {
+    // Look up custom_fee_schedule_id from hospital_vendors for tier 3
+    let hvFeeScheduleId: string | null = null;
+    if (body.hospitalId && body.vendorId) {
+      const hvRaw: any = await db.run(sql`SELECT custom_fee_schedule_id FROM hospital_vendors WHERE hospital_id = ${body.hospitalId} AND vendor_id = ${body.vendorId} LIMIT 1`);
+      const hvRow = hvRaw?.results?.[0] ?? hvRaw?.[0];
+      hvFeeScheduleId = hvRow?.custom_fee_schedule_id ?? null;
+    }
     const itemCodes: string[] = (body.orderItems as any[])
       .map((it) => it.code)
       .filter((c) => typeof c === 'string' && c.length > 0);
-    const contractRates = body.hospitalId && body.vendorId
-      ? await getContractRatesBulk(c.env.DB, body.hospitalId, body.vendorId, itemCodes)
-      : new Map();
+    const priceMap = await resolvePricesBulk(c.env.DB, {
+      hospitalId: body.hospitalId,
+      vendorId: body.vendorId,
+      codes: itemCodes,
+      feeScheduleId: hvFeeScheduleId,
+    });
 
     for (const item of body.orderItems) {
       const hcpc = item.code ?? null;
-      let unitPrice: number | null = null;
-      let medicareFee: number | null = null;
-      let priceSource: 'CONTRACT' | 'MEDICARE' | 'MANUAL' = 'MANUAL';
-      let sourceContractId: string | null = null;
-
-      if (hcpc) {
-        // Always fetch Medicare fee for reference (denormalized into row).
-        const feeRaw: any = await db.run(sql`
-          SELECT non_rural_rate FROM medicare_fee_schedule_items WHERE hcpc_code = ${hcpc} LIMIT 1
-        `);
-        const feeRow = feeRaw.results?.[0] ?? feeRaw[0];
-        medicareFee = feeRow?.non_rural_rate ?? null;
-
-        // Priority 1: contract rate
-        const contractMatch = contractRates.get(hcpc);
-        if (contractMatch) {
-          unitPrice = contractMatch.rate;
-          priceSource = 'CONTRACT';
-          sourceContractId = contractMatch.contractId;
-        } else if (medicareFee != null) {
-          // Priority 3: Medicare (FEE_SCHEDULE path goes through hospital_vendors
-          // and is applied at invoice generation — orders fall through to Medicare
-          // for now if no contract exists)
-          unitPrice = medicareFee;
-          priceSource = 'MEDICARE';
-        }
-      }
+      const resolved = hcpc ? priceMap.get(hcpc) : undefined;
+      const unitPrice = resolved?.unitPrice ?? null;
+      const medicareFee = resolved?.medicareFee ?? null;
+      const priceSource: string = resolved?.priceSource ?? 'MANUAL';
+      const sourceContractId = resolved?.contractId ?? null;
 
       const itemId = crypto.randomUUID();
       await db.run(sql`
@@ -1178,24 +1177,72 @@ app.post('/:id/send-for-approval', requirePermission('orders', 'WRITE'), async (
   if (!order) throw new NotFoundError('Order not found');
   assertOrderAccess(user, order);
   const now = new Date().toISOString();
-  const newSubStatus = order.orderSubStatus === 'ORDER_REQUESTED_FOR_MODIFY'
-    ? 'NEW_ORDER'
-    : 'NEW_ORDER';
-  await db.update(orders).set({ orderSubStatus: newSubStatus, updatedAt: now }).where(eq(orders.id, id));
+
+  // Resolve which approver should handle this order.
+  const approvers = await resolveApprovers(c.env.DB, 'ORDER', {
+    hospitalId: order.hospitalId ?? user.hospitalId ?? '',
+    facilityId: order.facilityId ?? null,
+    departmentId: order.departmentId ?? null,
+    amountUsd: null,
+    priority: order.priority ?? null,
+  });
+  const primaryApprover = approvers[0] ?? null;
+  const approverUserId = primaryApprover?.type === 'USER' ? primaryApprover.id : null;
+
+  // Update orders substatus (approverUserId lives in sidecar table — see below)
+  await db.update(orders)
+    .set({
+      orderSubStatus: 'PENDING_APPROVAL',
+      updatedAt: now,
+    })
+    .where(eq(orders.id, id));
+
+  // Upsert approver metadata into sidecar table (Gap 2 — orders table at column limit)
+  await db.run(sql`
+    INSERT INTO order_approval_meta (order_id, approver_user_id, fhir_encounter_id, created_at, updated_at)
+    VALUES (${id}, ${approverUserId}, NULL, ${now}, ${now})
+    ON CONFLICT(order_id) DO UPDATE SET
+      approver_user_id = excluded.approver_user_id,
+      updated_at = excluded.updated_at
+  `);
+
   await db.insert(orderHistory).values({
     id: crypto.randomUUID(),
     orderId: id,
-    description: `Sent for approval (${newSubStatus})`,
+    description: `Sent for approval${approverUserId ? ` → assigned to ${approverUserId}` : ''}`,
     changedByUserId: user.id,
     createdAt: now,
   });
+
+  // Notify the approver
+  if (approverUserId) {
+    try {
+      const { NotificationService } = await import('../services/notificationService');
+      const ns = new NotificationService(c.env.DB);
+      await ns.createNotification({
+        receiverId: approverUserId,
+        message: `Order #${(order as any).identifier ?? id} requires your approval.`,
+        redirectTo: 'ORDER',
+        redirectId: id,
+      });
+    } catch { /* notification failure non-fatal */ }
+  }
+
+  // Enqueue status change event
   try {
     await c.env.EVENTS_QUEUE.send({
       type: 'order.status_changed',
-      payload: { orderId: id, newSubStatus, oldStatus: order.orderSubStatus, changedByUserId: user.id },
+      payload: {
+        orderId: id,
+        newStatus: order.status ?? 'NEW',
+        newSubStatus: 'PENDING_APPROVAL',
+        oldStatus: order.orderSubStatus,
+        changedByUserId: user.id,
+      },
     });
   } catch { /* empty */ }
-  return c.json({ success: true, orderId: id, newSubStatus });
+
+  return c.json({ success: true, orderId: id, newSubStatus: 'PENDING_APPROVAL', approverUserId });
 });
 
 // POST /orders/:id/reject — reject with structured reason.

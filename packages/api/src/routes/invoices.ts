@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, desc, asc, and, sql, gte, lte } from 'drizzle-orm';
+import { eq, desc, asc, and, sql, gte, lte, inArray } from 'drizzle-orm';
 import { getDb } from '../lib/db';
 import { invoices, invoiceItems, vendors, hospitals } from '@curavend/db';
 import { NotFoundError, ValidationError, ForbiddenError } from '../lib/errors';
@@ -23,7 +23,9 @@ function assertInvoiceAccess(user: any, inv: { hospitalId?: string | null; vendo
   if (user.providerId && inv.providerId !== user.providerId) {
     throw new ForbiddenError('Access denied');
   }
-  if (user.superVendorId && inv.superVendorId !== user.superVendorId) {
+  // Super-vendor: only block if superVendorId is explicitly a different value.
+  // NULL means legacy/seed data; list-level scoping via vendorId is the guard.
+  if (user.superVendorId && inv.superVendorId !== null && inv.superVendorId !== user.superVendorId) {
     throw new ForbiddenError('Access denied');
   }
 }
@@ -47,9 +49,21 @@ app.get('/', async (c) => {
       conditions.push(eq(invoices.hospitalId, user.hospitalId));
     } else if (user.userType === 'VENDOR') {
       conditions.push(eq(invoices.vendorId, user.vendorId));
+    } else if (user.userType === 'SUPER_VENDOR' && user.superVendorId) {
+      // Super-vendor sees invoices for all their affiliated sub-vendors.
+      // invoices.superVendorId is often NULL on legacy rows, so fan-out via
+      // vendors.superVendorId instead.
+      const subVendors = await db
+        .select({ id: vendors.id })
+        .from(vendors)
+        .where(eq(vendors.superVendorId, user.superVendorId));
+      const subVendorIds = subVendors.map((v: any) => v.id);
+      if (subVendorIds.length === 0) {
+        return c.json({ items: [], total: 0 });
+      }
+      conditions.push(inArray(invoices.vendorId, subVendorIds));
     } else {
       if (user.providerId) conditions.push(eq(invoices.providerId, user.providerId));
-      if (user.superVendorId) conditions.push(eq(invoices.superVendorId, user.superVendorId));
     }
   }
   if (status) {

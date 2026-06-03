@@ -58,6 +58,8 @@ export const priorAuths = sqliteTable(
     quantityApproved: integer("quantity_approved"),
     submittedAt: text("submitted_at"),
     decisionAt: text("decision_at"),
+    submissionExternalRef: text("submission_external_ref"),
+    submissionSimulated: integer("submission_simulated").default(0),
 
     // Coverage window
     effectiveStartDate: text("effective_start_date"),

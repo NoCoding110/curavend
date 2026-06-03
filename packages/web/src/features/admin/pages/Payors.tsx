@@ -319,6 +319,7 @@ export const Payors: React.FC = () => {
                 <Tag color={lastEligibility.status === 'ACTIVE' ? 'green' : lastEligibility.status === 'INACTIVE' ? 'red' : 'default'}>
                   {lastEligibility.status}
                 </Tag>
+                {(lastEligibility as any).simulated && <Tag color="orange" style={{ marginLeft: 4 }}>SIMULATED</Tag>}
               </Descriptions.Item>
               <Descriptions.Item label="Benefit notes">{lastEligibility.benefitNotes}</Descriptions.Item>
               {lastEligibility.copayUsd != null && <Descriptions.Item label="Copay">${lastEligibility.copayUsd.toFixed(2)}</Descriptions.Item>}

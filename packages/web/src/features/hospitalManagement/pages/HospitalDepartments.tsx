@@ -32,6 +32,8 @@ import type { ColumnsType, ColumnType, TablePaginationConfig } from 'antd/es/tab
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 import { get, post, put, del } from '../../../api/client';
 import { usePermissions } from '../../../hooks/usePermissions';
+import { useUserRoles } from '../../../hooks/useUserRoles';
+import { useAdminHospitalSelect } from '../../../hooks/useAdminHospitalSelect';
 import { useListColumns, type ListColumnDef } from '../../../hooks/useListColumns';
 import { useFilterPresets } from '../../../hooks/useFilterPresets';
 import { useAsyncDropdown } from '../../../hooks/useAsyncDropdown';
@@ -88,6 +90,8 @@ const STATUS_OPTIONS = [
 
 const HospitalDepartments: React.FC = () => {
   const { can } = usePermissions();
+  const { isAdmin } = useUserRoles();
+  const adminHospital = useAdminHospitalSelect();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -158,6 +162,14 @@ const HospitalDepartments: React.FC = () => {
       if (p.facilityId) query.facilityId = p.facilityId;
       if (p.sortBy) { query.sortBy = p.sortBy; query.sortOrder = p.sortOrder ?? 'asc'; }
 
+      if (isAdmin && adminHospital.selectedId) {
+        query.hospitalId = adminHospital.selectedId;
+      } else if (isAdmin && !adminHospital.selectedId) {
+        // No hospital selected yet — don't fetch
+        setLoading(false);
+        return;
+      }
+
       const data = await get<any>('/hospital-departments', query);
       let items: Department[] = Array.isArray(data) ? data : (data?.items ?? []);
       if (p.status) items = items.filter((d) => d.status === p.status);
@@ -193,6 +205,13 @@ const HospitalDepartments: React.FC = () => {
     else fetchDepartments({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetsCtrl.defaultApplied]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      if (adminHospital.selectedId) fetchDepartments({});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminHospital.selectedId]);
 
   // ── Handlers ────────────────────────────────────────────
   const currentFilters = () => ({
@@ -384,6 +403,16 @@ const HospitalDepartments: React.FC = () => {
 
       <Card>
         <FilterBar>
+          {isAdmin && (
+            <Select
+              placeholder="Select hospital…"
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 220, flexShrink: 0 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          )}
           <Input
             placeholder="Search departments…"
             prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}

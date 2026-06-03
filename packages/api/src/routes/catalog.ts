@@ -18,11 +18,9 @@ import {
   skuGroups,
   hospitalVendors,
   vendors,
-  contracts,
-  contractItems,
 } from '@curavend/db';
 import { ForbiddenError } from '../lib/errors';
-import { getContractRatesBulk } from '../lib/contractPricing';
+import { resolvePricesBulk } from '../lib/priceResolver';
 import type { Env } from '../lib/env';
 import type { AuthUser } from '../middleware/auth';
 
@@ -130,11 +128,11 @@ app.get('/', async (c) => {
   let enriched = rows.map((r) => ({
     ...r,
     resolvedPriceCents: r.listPriceCents,
-    priceSource: 'LIST' as 'CONTRACT' | 'MEDICARE' | 'LIST',
+    priceSource: 'LIST' as string,
     contractId: null as string | null,
   }));
   if (user.userType === 'HOSPITAL' && user.hospitalId && rows.length) {
-    // Bulk contract lookup per vendor
+    // Full pricing cascade per vendor using resolvePricesBulk
     const byVendor = new Map<string, typeof rows>();
     for (const r of rows) {
       const list = byVendor.get(r.vendorId) ?? [];
@@ -142,18 +140,22 @@ app.get('/', async (c) => {
       byVendor.set(r.vendorId, list);
     }
     for (const [vid, list] of byVendor.entries()) {
-      const codes = Array.from(new Set(list.map((r) => r.hcpcCode)));
-      const rates = await getContractRatesBulk(c.env.DB, user.hospitalId, vid, codes);
+      const codes = Array.from(new Set(list.map((r) => r.hcpcCode).filter((c): c is string => !!c)));
+      const priceMap = await resolvePricesBulk(c.env.DB, {
+        hospitalId: user.hospitalId,
+        vendorId: vid,
+        codes,
+      });
       for (const r of list) {
-        const match = rates.get(r.hcpcCode);
-        if (match) {
+        const resolved = r.hcpcCode ? priceMap.get(r.hcpcCode) : undefined;
+        if (resolved && resolved.priceSource !== 'MANUAL' && resolved.unitPrice != null) {
           const idx = enriched.findIndex((e) => e.id === r.id);
           if (idx >= 0) {
             enriched[idx] = {
               ...enriched[idx],
-              resolvedPriceCents: Math.round(match.rate * 100),
-              priceSource: 'CONTRACT',
-              contractId: match.contractId,
+              resolvedPriceCents: Math.round(resolved.unitPrice * 100),
+              priceSource: resolved.priceSource,
+              contractId: resolved.contractId,
             };
           }
         }

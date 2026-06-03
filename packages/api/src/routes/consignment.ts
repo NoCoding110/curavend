@@ -3,24 +3,46 @@
  * Uses existing schema columns: par, on_hand, variance_reason, location
  */
 import { Hono } from 'hono';
-import { sql } from 'drizzle-orm';
+import { sql, eq, inArray } from 'drizzle-orm';
 import { getDb } from '../lib/db';
+import { vendors } from '@curavend/db';
 import { NotFoundError, ValidationError } from '../lib/errors';
 import type { Env } from '../lib/env';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 
-// List closets
+// List closets — scoped by user type
 app.get('/', async (c) => {
   const db = getDb(c.env.DB);
   const user = c.get('user');
+
   let where = '';
-  if (user.vendorId) where = `WHERE vendor_id = '${user.vendorId}'`;
-  else if (user.hospitalId) where = `WHERE hospital_id = '${user.hospitalId}'`;
+  if (user.vendorId) {
+    where = `WHERE vendor_id = '${user.vendorId}'`;
+  } else if (user.hospitalId) {
+    where = `WHERE hospital_id = '${user.hospitalId}'`;
+  } else if (user.superVendorId) {
+    // Super-vendor: scope to their affiliated sub-vendors
+    const subVendors = await db
+      .select({ id: vendors.id })
+      .from(vendors)
+      .where(eq(vendors.superVendorId, user.superVendorId));
+    const subIds = subVendors.map((v: any) => v.id);
+    if (subIds.length === 0) return c.json({ items: [], total: 0 });
+    const idList = subIds.map((id: string) => `'${id}'`).join(', ');
+    where = `WHERE vendor_id IN (${idList})`;
+  }
+  // ADMIN: no filter
+
   const raw: any = await db.run(
     sql.raw(`SELECT * FROM consignment_closets ${where} ORDER BY created_at DESC LIMIT 100`),
   );
-  return c.json({ items: raw.results ?? [], total: (raw.results ?? []).length });
+  // Backfill display_name for closets whose department_name is NULL
+  const items = (raw.results ?? []).map((r: any) => ({
+    ...r,
+    department_name: r.department_name || `Closet ${String(r.id).slice(0, 8)}`,
+  }));
+  return c.json({ items, total: items.length });
 });
 
 app.post('/', async (c) => {

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, sql, gte, lte, desc } from 'drizzle-orm';
+import { eq, and, sql, gte, lte, desc, inArray } from 'drizzle-orm';
 import { getDb } from '../lib/db';
 import {
   orders,
@@ -26,13 +26,28 @@ import {
 
 const app = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 
-// Helper to build common date + role scoping conditions for invoices
+/**
+ * Resolve the super-vendor's sub-vendor IDs from the DB once per request.
+ * Returns [] if the user is not SUPER_VENDOR or has no sub-vendors.
+ */
+async function resolveSuperVendorIds(db: any, user: any): Promise<string[]> {
+  if (user.userType !== 'SUPER_VENDOR' || !user.superVendorId) return [];
+  const rows = await db
+    .select({ id: vendors.id })
+    .from(vendors)
+    .where(eq(vendors.superVendorId, user.superVendorId));
+  return rows.map((r: any) => r.id);
+}
+
+// Helper to build common date + role scoping conditions for invoices.
+// subVendorIds: pre-resolved sub-vendor IDs for SUPER_VENDOR users.
 function buildInvoiceConditions(
   user: any,
   startDate?: string,
   endDate?: string,
   hospitalId?: string,
   vendorId?: string,
+  subVendorIds?: string[],
 ) {
   const conditions: any[] = [];
 
@@ -41,6 +56,16 @@ function buildInvoiceConditions(
     conditions.push(eq(invoices.hospitalId, user.hospitalId));
   } else if (user.userType === 'VENDOR' && user.vendorId) {
     conditions.push(eq(invoices.vendorId, user.vendorId));
+  } else if (user.userType === 'SUPER_VENDOR') {
+    // Super-vendor sees invoices for their sub-vendors only
+    if (subVendorIds && subVendorIds.length > 0) {
+      conditions.push(inArray(invoices.vendorId, subVendorIds));
+    } else {
+      // No sub-vendors → return nothing (handled by caller early-returning [])
+      conditions.push(sql`1 = 0`);
+    }
+  } else if (user.userType === 'PROVIDER' && user.providerId) {
+    conditions.push(eq(invoices.providerId, user.providerId));
   } else {
     // ADMIN-level: apply optional filters from query params
     if (hospitalId) conditions.push(eq(invoices.hospitalId, hospitalId));
@@ -53,7 +78,8 @@ function buildInvoiceConditions(
   return conditions;
 }
 
-// Helper to build common date + role scoping conditions for orders
+// Helper to build common date + role scoping conditions for orders.
+// subVendorIds: pre-resolved sub-vendor IDs for SUPER_VENDOR users.
 function buildOrderConditions(
   user: any,
   startDate?: string,
@@ -61,6 +87,7 @@ function buildOrderConditions(
   hospitalId?: string,
   vendorId?: string,
   providerId?: string,
+  subVendorIds?: string[],
 ) {
   const conditions: any[] = [];
 
@@ -68,6 +95,14 @@ function buildOrderConditions(
     conditions.push(eq(orders.hospitalId, user.hospitalId));
   } else if (user.userType === 'VENDOR' && user.vendorId) {
     conditions.push(eq(orders.vendorId, user.vendorId));
+  } else if (user.userType === 'SUPER_VENDOR') {
+    if (subVendorIds && subVendorIds.length > 0) {
+      conditions.push(inArray(orders.vendorId, subVendorIds));
+    } else {
+      conditions.push(sql`1 = 0`);
+    }
+  } else if (user.userType === 'PROVIDER' && user.providerId) {
+    conditions.push(eq(orders.providerId, user.providerId));
   } else {
     if (hospitalId) conditions.push(eq(orders.hospitalId, hospitalId));
     if (vendorId) conditions.push(eq(orders.vendorId, vendorId));
@@ -87,7 +122,9 @@ app.get('/spend-by-vendor', async (c) => {
   const user = c.get('user');
   const { startDate, endDate, hospitalId, vendorId } = c.req.query();
 
-  const conditions = buildInvoiceConditions(user, startDate, endDate, hospitalId, vendorId);
+  const svIds = await resolveSuperVendorIds(db, user);
+  if (user.userType === 'SUPER_VENDOR' && svIds.length === 0) return c.json({ items: [] });
+  const conditions = buildInvoiceConditions(user, startDate, endDate, hospitalId, vendorId, svIds);
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const results = await db
@@ -113,21 +150,34 @@ app.get('/spend-by-hcpc', async (c) => {
   const user = c.get('user');
   const { startDate, endDate, hospitalId, vendorId } = c.req.query();
 
+  const svIds = await resolveSuperVendorIds(db, user);
+  if (user.userType === 'SUPER_VENDOR' && svIds.length === 0) return c.json({ items: [] });
   // Build invoice-level scoping subquery conditions
-  const invoiceConditions = buildInvoiceConditions(user, startDate, endDate, hospitalId, vendorId);
+  const invoiceConditions = buildInvoiceConditions(user, startDate, endDate, hospitalId, vendorId, svIds);
   const invoiceWhere = invoiceConditions.length > 0 ? and(...invoiceConditions) : undefined;
 
   const results = await db
     .select({
       code: invoiceItems.code,
-      totalSpend: sql<number>`SUM(${invoiceItems.spend})`,
+      // lineTotalCents is the authoritative field; fall back to legacy spend * 100 if cents is 0
+      totalSpend: sql<number>`ROUND(SUM(
+        CASE WHEN ${invoiceItems.lineTotalCents} != 0
+          THEN ${invoiceItems.lineTotalCents} / 100.0
+          ELSE COALESCE(${invoiceItems.spend}, 0)
+        END
+      ), 2)`,
       usageCount: sql<number>`COUNT(*)`,
     })
     .from(invoiceItems)
     .innerJoin(invoices, eq(invoiceItems.invoiceId, invoices.id))
     .where(invoiceWhere)
     .groupBy(invoiceItems.code)
-    .orderBy(desc(sql`SUM(${invoiceItems.spend})`))
+    .orderBy(desc(sql`SUM(
+      CASE WHEN ${invoiceItems.lineTotalCents} != 0
+        THEN ${invoiceItems.lineTotalCents} / 100.0
+        ELSE COALESCE(${invoiceItems.spend}, 0)
+      END
+    )`))
     .limit(10);
 
   return c.json({ items: results });
@@ -145,7 +195,9 @@ app.get('/spend-by-month', async (c) => {
   twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
   const startDate = twelveMonthsAgo.toISOString().slice(0, 10);
 
-  const conditions = buildInvoiceConditions(user, startDate, undefined, hospitalId, vendorId);
+  const svIds = await resolveSuperVendorIds(db, user);
+  if (user.userType === 'SUPER_VENDOR' && svIds.length === 0) return c.json({ items: [] });
+  const conditions = buildInvoiceConditions(user, startDate, undefined, hospitalId, vendorId, svIds);
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const results = await db
@@ -169,7 +221,9 @@ app.get('/orders-by-status', async (c) => {
   const user = c.get('user');
   const { startDate, endDate, hospitalId, vendorId, providerId } = c.req.query();
 
-  const conditions = buildOrderConditions(user, startDate, endDate, hospitalId, vendorId, providerId);
+  const svIds = await resolveSuperVendorIds(db, user);
+  if (user.userType === 'SUPER_VENDOR' && svIds.length === 0) return c.json({ items: [] });
+  const conditions = buildOrderConditions(user, startDate, endDate, hospitalId, vendorId, providerId, svIds);
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const results = await db
@@ -193,7 +247,9 @@ app.get('/orders-by-vendor', async (c) => {
   const user = c.get('user');
   const { startDate, endDate, hospitalId, vendorId, providerId } = c.req.query();
 
-  const conditions = buildOrderConditions(user, startDate, endDate, hospitalId, vendorId, providerId);
+  const svIds = await resolveSuperVendorIds(db, user);
+  if (user.userType === 'SUPER_VENDOR' && svIds.length === 0) return c.json({ items: [] });
+  const conditions = buildOrderConditions(user, startDate, endDate, hospitalId, vendorId, providerId, svIds);
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const results = await db
@@ -219,7 +275,25 @@ app.get('/vendor-kpis', async (c) => {
   const { vendorId, startDate, endDate } = c.req.query();
 
   // Resolve the target vendor ID
-  const targetVendorId = vendorId || (user.userType === 'VENDOR' ? user.vendorId : null);
+  let targetVendorId = vendorId || (user.userType === 'VENDOR' ? user.vendorId : null);
+
+  // For SUPER_VENDOR: if no vendorId supplied, default to the first sub-vendor.
+  // Also validate that a supplied vendorId actually belongs to the SV's network.
+  if (user.userType === 'SUPER_VENDOR' && user.superVendorId) {
+    const subVendors = await db
+      .select({ id: vendors.id, name: vendors.name })
+      .from(vendors)
+      .where(eq(vendors.superVendorId, user.superVendorId));
+    const subIds = subVendors.map((v: any) => v.id);
+    if (subIds.length === 0) {
+      return c.json({ vendorId: null, totalOrders: 0, statusBreakdown: [], avgCompletionSeconds: null, subVendors: [] });
+    }
+    if (!targetVendorId) {
+      targetVendorId = subIds[0];
+    } else if (!subIds.includes(targetVendorId)) {
+      return c.json({ error: 'vendorId not in your network' }, 403);
+    }
+  }
 
   if (!targetVendorId) {
     return c.json({ error: 'vendorId is required' }, 400);

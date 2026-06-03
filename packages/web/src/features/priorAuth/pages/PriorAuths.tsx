@@ -147,11 +147,14 @@ export const PriorAuths: React.FC = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      width: 130,
-      render: (s: PriorAuthStatus) => (
-        <Tag color={STATUS_COLOR[s]} icon={STATUS_ICON[s]}>
-          {s}
-        </Tag>
+      width: 180,
+      render: (s: PriorAuthStatus, r: any) => (
+        <>
+          <Tag color={STATUS_COLOR[s]} icon={STATUS_ICON[s]}>
+            {s}
+          </Tag>
+          {r.submissionSimulated ? <Tag color="orange" style={{ marginLeft: 4 }}>SIM</Tag> : null}
+        </>
       ),
     },
     {

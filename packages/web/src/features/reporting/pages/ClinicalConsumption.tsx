@@ -2,35 +2,76 @@
  * Clinical consumption rollup — cost per encounter / department / provider.
  */
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Card, Col, Row, Segmented, Space, Table, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, Row, Segmented, Select, Space, Table, Typography, message } from 'antd';
 import { MedicineBoxOutlined, ReloadOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { get } from '../../../api/client';
+import { useUserRoles } from '../../../hooks/useUserRoles';
+import { useAdminHospitalSelect } from '../../../hooks/useAdminHospitalSelect';
 
 const { Title, Text } = Typography;
 const PageWrap = styled.div`padding: 24px;`;
 
 const ClinicalConsumptionPage: React.FC = () => {
+  const { isAdmin } = useUserRoles();
+  const adminHospital = useAdminHospitalSelect();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [groupBy, setGroupBy] = useState<string>('encounter');
   const [forbidden, setForbidden] = useState(false);
 
   const load = async () => {
+    if (isAdmin && !adminHospital.selectedId) return;
     setLoading(true);
     setForbidden(false);
     try {
-      const r = await get<any>(`/reporting/clinical-consumption?groupBy=${groupBy}`);
+      const params: Record<string, any> = { groupBy };
+      if (isAdmin && adminHospital.selectedId) params.hospitalId = adminHospital.selectedId;
+      const r = await get<any>('/reporting/clinical-consumption', params);
       setRows(r.items ?? []);
     } catch (err: any) {
       if (err?.response?.status === 403) { setForbidden(true); }
       else { message.error(err?.response?.data?.error ?? 'Failed'); }
     } finally { setLoading(false); }
   };
-  useEffect(() => { void load(); }, [groupBy]);
+  useEffect(() => { void load(); }, [groupBy, adminHospital.selectedId]);
+
+  if (isAdmin && !adminHospital.selectedId) {
+    return (
+      <PageWrap>
+        <Alert type="info" showIcon style={{ marginBottom: 16 }}
+          message="Select a hospital to view this report"
+          description={
+            <Select
+              placeholder="Select hospital…"
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280, marginTop: 8 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          }
+        />
+      </PageWrap>
+    );
+  }
 
   return (
     <PageWrap>
+      {isAdmin && (
+        <Card size="small" style={{ marginBottom: 12 }}>
+          <Space>
+            <span>Hospital:</span>
+            <Select
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          </Space>
+        </Card>
+      )}
       {forbidden && (
         <Alert type="warning" showIcon style={{ marginBottom: 16 }}
           message="Hospital context required"

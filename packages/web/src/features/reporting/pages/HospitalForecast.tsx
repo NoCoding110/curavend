@@ -2,10 +2,12 @@
  * Hospital demand forecast (12-month trailing + seasonality projection).
  */
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Card, Col, Row, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, Row, Select, Space, Table, Tag, Typography, message } from 'antd';
 import { LineChartOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { get, post } from '../../../api/client';
+import { useUserRoles } from '../../../hooks/useUserRoles';
+import { useAdminHospitalSelect } from '../../../hooks/useAdminHospitalSelect';
 
 const { Title, Text } = Typography;
 const PageWrap = styled.div`padding: 24px;`;
@@ -19,6 +21,8 @@ interface ForecastRow {
 }
 
 const HospitalForecastPage: React.FC = () => {
+  const { isAdmin } = useUserRoles();
+  const adminHospital = useAdminHospitalSelect();
   const [rows, setRows] = useState<ForecastRow[]>([]);
   const [meta, setMeta] = useState<{ runAt: string; cached: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,10 +30,13 @@ const HospitalForecastPage: React.FC = () => {
   const [forbidden, setForbidden] = useState(false);
 
   const load = async () => {
+    if (isAdmin && !adminHospital.selectedId) return;
     setLoading(true);
     setForbidden(false);
     try {
-      const r = await get<any>('/reporting/hospital-forecast');
+      const params: Record<string, any> = {};
+      if (isAdmin && adminHospital.selectedId) params.hospitalId = adminHospital.selectedId;
+      const r = await get<any>('/reporting/hospital-forecast', params);
       setRows(r.items ?? []);
       setMeta({ runAt: r.runAt, cached: r.cached });
     } catch (err: any) {
@@ -37,12 +44,14 @@ const HospitalForecastPage: React.FC = () => {
       else { message.error(err?.response?.data?.error ?? 'Failed'); }
     } finally { setLoading(false); }
   };
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [adminHospital.selectedId]);
 
   const recompute = async () => {
     setRunning(true);
     try {
-      const r = await post<any>('/reporting/hospital-forecast/run', {});
+      const body: Record<string, any> = {};
+      if (isAdmin && adminHospital.selectedId) body.hospitalId = adminHospital.selectedId;
+      const r = await post<any>('/reporting/hospital-forecast/run', body);
       setRows(r.items ?? []);
       setMeta({ runAt: new Date().toISOString(), cached: false });
       message.success('Recomputed');
@@ -66,8 +75,42 @@ const HospitalForecastPage: React.FC = () => {
     })),
   ];
 
+  if (isAdmin && !adminHospital.selectedId) {
+    return (
+      <PageWrap>
+        <Alert type="info" showIcon style={{ marginBottom: 16 }}
+          message="Select a hospital to view this report"
+          description={
+            <Select
+              placeholder="Select hospital…"
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280, marginTop: 8 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          }
+        />
+      </PageWrap>
+    );
+  }
+
   return (
     <PageWrap>
+      {isAdmin && (
+        <Card size="small" style={{ marginBottom: 12 }}>
+          <Space>
+            <span>Hospital:</span>
+            <Select
+              value={adminHospital.selectedId}
+              onChange={adminHospital.setSelectedId}
+              loading={adminHospital.loading}
+              style={{ width: 280 }}
+              options={adminHospital.hospitals.map(h => ({ value: h.id, label: h.name }))}
+            />
+          </Space>
+        </Card>
+      )}
       <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
         <Col>
           <Title level={3} style={{ margin: 0 }}>

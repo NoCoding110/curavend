@@ -378,7 +378,7 @@ app.post('/bulk-approve', async (c) => {
   for (const item of items) {
     try {
       if (item.entityType === 'order') {
-        await approveOrderRaw(db, user, item.entityId);
+        await approveOrderRaw(c.env, db, user, item.entityId);
       } else if (item.entityType === 'user') {
         if (user.role !== 'ACCOUNT_MANAGER' && user.role !== 'ACCOUNT_MANAGER_USER') {
           throw new ForbiddenError('Only account managers can approve users');
@@ -410,17 +410,18 @@ app.post('/bulk-approve', async (c) => {
 // ─── Internal helpers (reuse order-status logic) ────────────────────────────
 
 async function approveOrder(c: any, db: any, user: AuthUser, id: string, body: any) {
-  await approveOrderRaw(db, user, id, body.vendorId);
+  await approveOrderRaw(c.env, db, user, id, body.vendorId);
   return c.json({ success: true, entityType: 'order', entityId: id });
 }
 
 /**
  * Approve an order based on its current substatus:
+ *   - PENDING_APPROVAL → VENDOR_ASSIGNED
  *   - NEW_ORDER → VENDOR_ASSIGNED (requires vendorId in body if not already set)
  *   - VENDOR_ASSIGNED → VENDOR_CONFIRMED_RECEIPT (vendor side)
  *   - ORDER_REQUESTED_FOR_MODIFY → VENDOR_ASSIGNED (re-accept after modification)
  */
-async function approveOrderRaw(db: any, user: AuthUser, id: string, vendorIdOverride?: string) {
+async function approveOrderRaw(env: any, db: any, user: AuthUser, id: string, vendorIdOverride?: string) {
   const existing = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
   if (!existing.length) throw new NotFoundError('Order not found');
   const order = existing[0];
@@ -431,6 +432,7 @@ async function approveOrderRaw(db: any, user: AuthUser, id: string, vendorIdOver
   const updateData: any = { updatedAt: now, changedByUserId: user.id };
 
   switch (order.orderSubStatus) {
+    case 'PENDING_APPROVAL':
     case 'NEW_ORDER':
     case 'ORDER_REQUESTED_FOR_MODIFY':
       nextSubStatus = 'VENDOR_ASSIGNED';
@@ -461,6 +463,20 @@ async function approveOrderRaw(db: any, user: AuthUser, id: string, vendorIdOver
     changedByUserId: user.id,
     description: `Approved by ${user.email} → ${nextSubStatus}`,
   });
+
+  // Enqueue order.status_changed so downstream handlers fire
+  try {
+    await env.EVENTS_QUEUE.send({
+      type: 'order.status_changed',
+      payload: {
+        orderId: id,
+        newStatus: 'IN_PROGRESS',
+        newSubStatus: nextSubStatus,
+        oldStatus: order.orderSubStatus,
+        changedByUserId: user.id,
+      },
+    });
+  } catch { /* queue failure non-fatal */ }
 }
 
 async function rejectOrder(c: any, db: any, user: AuthUser, id: string, reason?: string) {

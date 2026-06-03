@@ -15,7 +15,9 @@ const SubscriptionPlans: React.FC = () => {
     (async () => {
       try {
         const d = await get<any>('/subscriptions/plans');
-        setPlans(d.items ?? []);
+        // Sort ascending by price: Free → Standard → Pro
+        const sorted = (d.items ?? []).slice().sort((a: any, b: any) => (a.price ?? 0) - (b.price ?? 0));
+        setPlans(sorted);
       } catch (err: any) {
         message.error('Failed to load plans');
       } finally {

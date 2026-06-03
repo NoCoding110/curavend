@@ -1,7 +1,7 @@
 /**
  * Queue handlers for order.* events.
  */
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getDb } from '../lib/db';
 import { rooms } from '@curavend/db';
 import { getOrderById, notifyHospitalUsers, notifyVendorUsers } from './notificationHelpers';
@@ -249,6 +249,15 @@ export async function handleOrderStatusChanged(
     } catch { /* empty */ }
   }
 
+  // Gap 3 — Epic write-back on ORDER_COMPLETED
+  if (newSubStatus === 'ORDER_COMPLETED') {
+    try {
+      await triggerEhrWriteBack(env, order);
+    } catch (err) {
+      console.error('[orderEvents] EHR write-back handler crashed:', err);
+    }
+  }
+
   // Phase E — fire ERP push for any vendor connector whose trigger_event
   // matches the new substatus. Failures isolated; one bad endpoint never
   // stalls the queue (each connector has its own retry/log lifecycle).
@@ -267,5 +276,123 @@ export async function handleOrderStatusChanged(
     }
   } catch (err) {
     console.error('[orderEvents] ERP push handler crashed:', err);
+  }
+}
+
+/**
+ * Gap 3 — Trigger Epic FHIR write-back on ORDER_COMPLETED.
+ * Opt-in: does nothing when epicConnectionId or fhirPatientId is absent.
+ * All write attempts are logged to ehr_write_log (idempotent via INSERT OR IGNORE).
+ */
+async function triggerEhrWriteBack(env: any, order: any): Promise<void> {
+  const epicConnectionId: string | null = order.epicConnectionId ?? order.epic_connection_id ?? null;
+  const fhirPatientId: string | null = order.fhirPatientId ?? order.fhir_patient_id ?? null;
+  if (!epicConnectionId || !fhirPatientId) return;
+
+  const now = new Date().toISOString();
+  const db = getDb(env.DB);
+
+  async function writeLog(params: {
+    resourceType: string;
+    idempotencyKey: string;
+    status: 'SUCCESS' | 'FAILED' | 'SKIPPED';
+    fhirId?: string | null;
+    errorMessage?: string | null;
+  }) {
+    try {
+      await db.run(sql`
+        INSERT OR IGNORE INTO ehr_write_log
+          (id, order_id, connection_id, resource_type, idempotency_key, fhir_id, status, error_message, created_at)
+        VALUES
+          (${crypto.randomUUID()}, ${order.id}, ${epicConnectionId}, ${params.resourceType},
+           ${params.idempotencyKey}, ${params.fhirId ?? null}, ${params.status},
+           ${params.errorMessage ?? null}, ${now})
+      `);
+    } catch { /* log write failure non-fatal */ }
+  }
+
+  if (!env.FERNET_KEY) {
+    await writeLog({ resourceType: 'DocumentReference', idempotencyKey: `order-${order.id}-dwo-v1`, status: 'SKIPPED', errorMessage: 'FERNET_KEY not configured' });
+    return;
+  }
+
+  let conn: any;
+  try {
+    const { loadConnection } = await import('../services/connectionRegistry');
+    conn = await loadConnection(env, epicConnectionId);
+    if (!conn) {
+      await writeLog({ resourceType: 'DocumentReference', idempotencyKey: `order-${order.id}-dwo-v1`, status: 'SKIPPED', errorMessage: 'EHR connection not found' });
+      return;
+    }
+  } catch (err: any) {
+    await writeLog({ resourceType: 'DocumentReference', idempotencyKey: `order-${order.id}-dwo-v1`, status: 'SKIPPED', errorMessage: `loadConnection error: ${err?.message}` });
+    return;
+  }
+
+  // DocumentReference write-back
+  try {
+    const { buildDwoPdf } = await import('../services/orderDocumentBuilder');
+    const pdfBytes = await buildDwoPdf(env, order.id);
+    if (pdfBytes) {
+      // Try documentReference fhir service
+      try {
+        const fhirDocRef = await import('../services/fhir/documentReference') as any;
+        const createFn = fhirDocRef.createDocumentReference ?? fhirDocRef.default?.createDocumentReference;
+        if (typeof createFn === 'function') {
+          const result = await createFn(env, conn, {
+            patientId: fhirPatientId,
+            loincCode: '57133-1',
+            title: `Supply Order DWO - ${order.id}`,
+            pdfBytes,
+            idempotencyKey: `order-${order.id}-dwo-v1`,
+          });
+          await writeLog({ resourceType: 'DocumentReference', idempotencyKey: `order-${order.id}-dwo-v1`, status: 'SUCCESS', fhirId: (result as any)?.id });
+        } else {
+          await writeLog({ resourceType: 'DocumentReference', idempotencyKey: `order-${order.id}-dwo-v1`, status: 'SKIPPED', errorMessage: 'createDocumentReference not available' });
+        }
+      } catch (err: any) {
+        await writeLog({ resourceType: 'DocumentReference', idempotencyKey: `order-${order.id}-dwo-v1`, status: 'FAILED', errorMessage: err?.message ?? String(err) });
+      }
+    } else {
+      await writeLog({ resourceType: 'DocumentReference', idempotencyKey: `order-${order.id}-dwo-v1`, status: 'SKIPPED', errorMessage: 'PDF not available (non-DME order or render failed)' });
+    }
+  } catch (err: any) {
+    await writeLog({ resourceType: 'DocumentReference', idempotencyKey: `order-${order.id}-dwo-v1`, status: 'FAILED', errorMessage: err?.message ?? String(err) });
+  }
+
+  // Procedure write-back per order item (requires fhir_encounter_id from Gap 2 sidecar table)
+  // The orders table is at D1's ALTER TABLE column limit; fhir_encounter_id lives in order_approval_meta.
+  let fhirEncounterId: string | null = order.fhirEncounterId ?? order.fhir_encounter_id ?? null;
+  if (!fhirEncounterId) {
+    try {
+      const metaRow: any = await db.run(sql`SELECT fhir_encounter_id FROM order_approval_meta WHERE order_id = ${order.id} LIMIT 1`);
+      fhirEncounterId = metaRow?.results?.[0]?.fhir_encounter_id ?? metaRow?.[0]?.fhir_encounter_id ?? null;
+    } catch { /* non-fatal */ }
+  }
+  if (fhirEncounterId && conn?.mappingProfile?.procedureWriteEnabled) {
+    const itemsRaw: any = await db.run(sql`SELECT id, hcpc_code, quantity FROM order_items WHERE order_id = ${order.id}`);
+    const items: any[] = itemsRaw?.results ?? (Array.isArray(itemsRaw) ? itemsRaw : []);
+    for (const item of items) {
+      const idemKey = `order-${order.id}-item-${item.id}`;
+      try {
+        const fhirProc = await import('../services/fhir/procedure') as any;
+        const createProcedureFn = fhirProc.createProcedure ?? fhirProc.default?.createProcedure;
+        if (typeof createProcedureFn === 'function') {
+          const result = await createProcedureFn(env, conn, {
+            patientId: fhirPatientId,
+            encounterId: fhirEncounterId,
+            hcpcCode: item.hcpc_code,
+            performedDateTime: order.updatedAt ?? now,
+            quantity: item.quantity ?? 1,
+            idempotencyKey: idemKey,
+          });
+          await writeLog({ resourceType: 'Procedure', idempotencyKey: idemKey, status: 'SUCCESS', fhirId: (result as any)?.id });
+        } else {
+          await writeLog({ resourceType: 'Procedure', idempotencyKey: idemKey, status: 'SKIPPED', errorMessage: 'createProcedure not available' });
+        }
+      } catch (err: any) {
+        await writeLog({ resourceType: 'Procedure', idempotencyKey: idemKey, status: 'FAILED', errorMessage: err?.message ?? String(err) });
+      }
+    }
   }
 }

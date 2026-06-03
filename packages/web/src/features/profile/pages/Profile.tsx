@@ -46,12 +46,40 @@ const AvatarSection = styled.div`
 `;
 
 const ROLE_LABELS: Record<string, string> = {
+  // userType values (DB uppercase)
+  ADMIN: 'Administrator',
+  HOSPITAL: 'Hospital',
+  VENDOR: 'Vendor',
+  PROVIDER: 'Provider',
+  SUPER_VENDOR: 'Super Vendor',
+  LAB: 'Lab',
+  // role values (DB uppercase)
+  ACCOUNT_MANAGER: 'Account Manager',
+  FACILITY_ACCOUNT_MANAGER: 'Facility Account Manager',
+  FACILITY_USER: 'Facility User',
+  VENDOR_ACCOUNT_MANAGER: 'Vendor Account Manager',
+  VENDOR_USER: 'Vendor User',
+  PROVIDER_EXECUTIVE_ADMIN: 'Provider Executive Admin',
+  PROVIDER_USER: 'Provider User',
+  ACCOUNT_MANAGER_USER: 'Account Manager User',
+  LAB_ADMIN: 'Lab Admin',
+  LAB_USER: 'Lab User',
+  // Legacy camelCase keys kept for backwards-compat
   admin: 'Administrator',
-  hospital: 'Hospital Admin',
+  hospital: 'Hospital',
   vendor: 'Vendor',
   superVendor: 'Super Vendor',
   provider: 'Provider',
 };
+
+/** Human-readable label for a userType code. */
+function formatUserType(userType: string | undefined): string {
+  if (!userType) return '—';
+  return ROLE_LABELS[userType] ?? userType
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
 
 const Profile: React.FC = () => {
   const dispatch = useDispatch();
@@ -123,9 +151,8 @@ const Profile: React.FC = () => {
   };
 
   const displayRole =
-    ROLE_LABELS[userData?.role || ''] ||
-    ROLE_LABELS[userData?.userType || ''] ||
-    userData?.role ||
+    (userData?.role ? (ROLE_LABELS[userData.role] ?? formatUserType(userData.role)) : null) ||
+    formatUserType(userData?.userType) ||
     'User';
 
   return (
@@ -199,9 +226,7 @@ const Profile: React.FC = () => {
             </Descriptions.Item>
             <Descriptions.Item label="Role">{displayRole}</Descriptions.Item>
             <Descriptions.Item label="Account Type">
-              {userData?.userType
-                ? userData.userType.charAt(0).toUpperCase() + userData.userType.slice(1)
-                : '—'}
+              {formatUserType(userData?.userType)}
             </Descriptions.Item>
             <Descriptions.Item label="Contact Phone">
               {(userData as any)?.contact || '—'}
