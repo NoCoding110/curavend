@@ -152,6 +152,7 @@ const FirstLoginPasswordChange = lazy(() => import('../features/auth/pages/First
 const PhiConsent = lazy(() => import('../features/auth/pages/PhiConsent'));
 const CreateVendor = lazy(() => import('../features/userManagement/pages/CreateVendor'));
 const CreateProvider = lazy(() => import('../features/userManagement/pages/CreateProvider'));
+const CreateLab = lazy(() => import('../features/userManagement/pages/CreateLab'));
 const HospitalFacilities = lazy(() => import('../features/hospitalManagement/pages/HospitalFacilities'));
 const HospitalDepartments = lazy(() => import('../features/hospitalManagement/pages/HospitalDepartments'));
 const HospitalPhysicians = lazy(() => import('../features/hospitalManagement/pages/HospitalPhysicians'));
@@ -259,6 +260,7 @@ const AllRoutes: React.FC = () => {
           <Route path="/setting" element={<Setting />} />
           <Route path="/create-vendor" element={<CreateVendor />} />
           <Route path="/create-provider" element={<CreateProvider />} />
+          <Route path="/create-lab" element={<CreateLab />} />
           <Route path="/help-center" element={<HelpCenterPage />} />
           <Route path="/prior-auths" element={<PriorAuthsPage />} />
           <Route path="/requisitions" element={<RequisitionsPage />} />

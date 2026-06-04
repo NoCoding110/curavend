@@ -77,6 +77,7 @@ const EXACT: Record<string, BreadcrumbCrumb[]> = {
   '/vendors': [{ title: 'Platform Management', to: '/dashboard' }, { title: 'Manage Vendors' }],
   '/create-vendor': [{ title: 'Platform Management', to: '/dashboard' }, { title: 'Manage Vendors', to: '/vendors' }, { title: 'New Vendor' }],
   '/create-provider': [{ title: 'Platform Management', to: '/dashboard' }, { title: 'Manage Providers' }, { title: 'New Provider' }],
+  '/create-lab': [{ title: 'Platform Management', to: '/dashboard' }, { title: 'Manage Labs' }, { title: 'New Lab Group' }],
   '/hospitals': [{ title: 'Platform Management', to: '/dashboard' }, { title: 'Manage Hospitals' }],
   // `/facility-vendors` is reached from multiple sidebars (admin "Facility–Vendor Links", hospital "My Vendors", vendor "My Hospitals"). Keep the crumb role-neutral instead of forcing every persona through "Platform Management".
   '/facility-vendors': [{ title: 'Hospital–Vendor Links' }],

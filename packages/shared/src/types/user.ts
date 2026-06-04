@@ -2,7 +2,7 @@
 // User-related types
 // ──────────────────────────────────────────────
 
-export type UserType = 'ADMIN' | 'HOSPITAL' | 'VENDOR';
+export type UserType = 'ADMIN' | 'HOSPITAL' | 'VENDOR' | 'PROVIDER' | 'SUPER_VENDOR' | 'LAB';
 
 export type UserRole =
   | 'ACCOUNT_MANAGER'
@@ -13,7 +13,9 @@ export type UserRole =
   | 'PROVIDER_EXECUTIVE_ADMIN'
   | 'PROVIDER_USER'
   | 'ACCOUNT_MANAGER_USER'
-  | 'SUPER_VENDOR';
+  | 'SUPER_VENDOR'
+  | 'LAB_ADMIN'
+  | 'LAB_USER';
 
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
 

@@ -115,11 +115,15 @@ app.post('/onboard', async (c) => {
   const adminId = crypto.randomUUID();
   const adminEmail = body.adminUser.email.toLowerCase().trim();
 
+  // The onboarded user is the provider network's admin — scoped to providerId,
+  // NOT a platform admin. Setting user_type='ADMIN' here would silently grant
+  // them tenant-wide read access via the ADMIN branches in providers/labs/
+  // contracts/reporting/search routes.
   await db.run(sql`
     INSERT INTO users (id, name, email, password, role, user_type, approval_status, user_status, must_change_password, provider_id, failed_login_attempts, created_at, updated_at)
     VALUES (
       ${adminId}, ${`${body.adminUser.firstName ?? ''} ${body.adminUser.lastName ?? ''}`.trim()},
-      ${adminEmail}, ${passwordHash}, 'ADMIN', 'ADMIN', 'APPROVED', 'ACTIVE', 1, ${providerId}, 0, ${now}, ${now}
+      ${adminEmail}, ${passwordHash}, 'PROVIDER_EXECUTIVE_ADMIN', 'PROVIDER', 'APPROVED', 'ACTIVE', 1, ${providerId}, 0, ${now}, ${now}
     )
   `);
 

@@ -25,6 +25,8 @@ import { autoConsumeForLabOrder } from '../services/labInventoryService';
 import { downloadFile } from '../services/storageService';
 import { generateLabOrderTrackingReport, XLSX_CONTENT_TYPE } from '../services/xlsxService';
 import { logPhiAccess } from '../services/phiAuditService';
+import { hashPassword } from '../services/authService';
+import { EmailService } from '../services/emailService';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -43,6 +45,70 @@ function requireLabOrAdmin(user: any): void {
     throw new ForbiddenError('Lab portal requires LAB or ADMIN user type');
   }
 }
+
+// ─── Onboarding ────────────────────────────────────────────────────────────
+
+const onboardSchema = z.object({
+  name: z.string().min(1),
+  groupType: z.enum(['SINGLE_SITE', 'D2P']),
+  vendorId: z.string().optional(),
+  description: z.string().optional(),
+  adminUser: z.object({
+    email: z.string().email(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+  }),
+});
+
+// POST /labs/onboard — create lab group + its admin user (platform ADMIN only).
+// Mirrors POST /providers/onboard; the created user is scoped to the new
+// labGroupId via user_type='LAB', NOT a platform admin.
+app.post('/onboard', async (c) => {
+  const user = c.get('user') as any;
+  if (user.userType !== 'ADMIN') {
+    throw new ForbiddenError('Platform admin required to onboard a lab');
+  }
+
+  const parsed = onboardSchema.safeParse(await c.req.json());
+  if (!parsed.success) throw new ValidationError(parsed.error.message);
+  const body = parsed.data;
+
+  const db = getDb(c.env.DB);
+  const now = new Date().toISOString();
+  const labGroupId = crypto.randomUUID();
+
+  await db.insert(labGroups).values({
+    id: labGroupId,
+    name: body.name,
+    groupType: body.groupType,
+    vendorId: body.vendorId ?? null,
+    description: body.description ?? null,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const tempPassword = `Temp${Math.random().toString(36).slice(2, 10)}!`;
+  const passwordHash = await hashPassword(tempPassword);
+  const adminId = crypto.randomUUID();
+  const adminEmail = body.adminUser.email.toLowerCase().trim();
+  const adminName = `${body.adminUser.firstName ?? ''} ${body.adminUser.lastName ?? ''}`.trim();
+
+  await db.run(sql`
+    INSERT INTO users (id, name, email, password, role, user_type, approval_status, user_status, must_change_password, lab_group_id, failed_login_attempts, created_at, updated_at)
+    VALUES (
+      ${adminId}, ${adminName}, ${adminEmail}, ${passwordHash},
+      'LAB_ADMIN', 'LAB', 'APPROVED', 'ACTIVE', 1, ${labGroupId}, 0, ${now}, ${now}
+    )
+  `);
+
+  await new EmailService(c.env.RESEND_API_KEY).sendWelcomeEmail({
+    email: adminEmail,
+    name: adminName || adminEmail,
+    tempPassword,
+  });
+
+  return c.json({ success: true, labGroupId, adminUserId: adminId }, 201);
+});
 
 // ─── Lab Groups CRUD ───────────────────────────────────────────────────────
 

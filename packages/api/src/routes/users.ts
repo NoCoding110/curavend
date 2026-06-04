@@ -30,7 +30,7 @@ const createUserSchema = z.object({
   state: z.string().optional(),
   city: z.string().optional(),
   zip: z.string().optional(),
-  userType: z.enum(['ADMIN', 'HOSPITAL', 'VENDOR']),
+  userType: z.enum(['ADMIN', 'HOSPITAL', 'VENDOR', 'PROVIDER', 'LAB']),
   role: z.enum([
     'ACCOUNT_MANAGER',
     'FACILITY_ACCOUNT_MANAGER',
@@ -42,11 +42,14 @@ const createUserSchema = z.object({
     'ACCOUNT_MANAGER_USER',
     'SUPER_VENDOR',
     'PHYSICIAN',
+    'LAB_ADMIN',
+    'LAB_USER',
   ]),
   providerId: z.string().optional(),
   hospitalId: z.string().optional(),
   vendorId: z.string().optional(),
   superVendorId: z.string().optional(),
+  labGroupId: z.string().optional(),
   subscriptionPlanId: z.string().optional(),
   npiNumber: z.string().optional(),
   specialty: z.string().optional(),
@@ -75,6 +78,8 @@ const updateUserSchema = z.object({
       'ACCOUNT_MANAGER_USER',
       'SUPER_VENDOR',
       'PHYSICIAN',
+      'LAB_ADMIN',
+      'LAB_USER',
     ])
     .optional(),
   subscriptionPlanId: z.string().nullable().optional(),
@@ -103,7 +108,7 @@ const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   search: z.string().optional(),
-  userType: z.enum(['ADMIN', 'HOSPITAL', 'VENDOR']).optional(),
+  userType: z.enum(['ADMIN', 'HOSPITAL', 'VENDOR', 'PROVIDER', 'LAB']).optional(),
   userStatus: z.enum(['ACTIVE', 'INACTIVE']).optional(),
   role: z.string().optional(),
   sortBy: z.enum(['name', 'email', 'specialty', 'userStatus', 'createdAt']).optional(),
@@ -315,6 +320,7 @@ userRoutes.post(
     'VENDOR_ACCOUNT_MANAGER',
     'PROVIDER_EXECUTIVE_ADMIN',
     'SUPER_VENDOR',
+    'LAB_ADMIN',
   ),
   async (c) => {
     const authUser = c.get('user');
@@ -334,7 +340,8 @@ userRoutes.post(
       throw new ConflictError('A user with this email already exists');
     }
 
-    // Scope enforcement: non-admins can only create users within their org
+    // Scope enforcement: non-platform-admins can only create users within
+    // their own org. The new user's foreign-key field must match the caller's.
     if (!['ACCOUNT_MANAGER', 'ACCOUNT_MANAGER_USER'].includes(authUser.role)) {
       if (data.userType === 'HOSPITAL' && data.hospitalId !== authUser.hospitalId) {
         throw new ForbiddenError('Cannot create users outside your facility');
@@ -342,6 +349,22 @@ userRoutes.post(
       if (data.userType === 'VENDOR' && data.vendorId !== authUser.vendorId) {
         throw new ForbiddenError('Cannot create users outside your vendor organization');
       }
+      if (data.userType === 'PROVIDER' && data.providerId !== authUser.providerId) {
+        throw new ForbiddenError('Cannot create users outside your provider network');
+      }
+      if (data.userType === 'LAB' && data.labGroupId !== authUser.labGroupId) {
+        throw new ForbiddenError('Cannot create users outside your lab group');
+      }
+    }
+
+    // Tenant FK must be present whenever a tenant userType is requested,
+    // even when the platform admin is the caller — otherwise the inserted
+    // row's scope columns are NULL and read paths leak across tenants.
+    if (data.userType === 'PROVIDER' && !data.providerId) {
+      throw new ValidationError('providerId is required for PROVIDER users');
+    }
+    if (data.userType === 'LAB' && !data.labGroupId) {
+      throw new ValidationError('labGroupId is required for LAB users');
     }
 
     // Generate temporary password
@@ -379,6 +402,7 @@ userRoutes.post(
       hospitalId: data.hospitalId ?? null,
       vendorId: data.vendorId ?? null,
       superVendorId: data.superVendorId ?? null,
+      labGroupId: data.labGroupId ?? null,
       subscriptionPlanId: data.subscriptionPlanId ?? null,
       npiNumber: (data as any).npiNumber ?? null,
       specialty: (data as any).specialty ?? null,
@@ -539,6 +563,7 @@ userRoutes.put(
     'VENDOR_ACCOUNT_MANAGER',
     'PROVIDER_EXECUTIVE_ADMIN',
     'SUPER_VENDOR',
+    'LAB_ADMIN',
   ),
   async (c) => {
     const authUser = c.get('user');

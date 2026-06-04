@@ -307,6 +307,100 @@ async function testCreateRequisitionFlow() {
   } else fail('req-flow', 'POST /api/requisitions/:id/cancel', `${cancelled.status}`);
 }
 
+async function testOnboardingAuth() {
+  section('8a. Persona onboarding — auth gates');
+  // These run on every invocation: they assert the /onboard routes are
+  // protected. No DB writes, no emails — just a 401/403 probe.
+  const savedToken = TOKEN;
+  TOKEN = null; // call as anonymous
+  try {
+    const p = await req('POST', '/api/providers/onboard', { name: 'x', adminUser: { email: 'x@curavend.test' } });
+    if (p.status === 401 || p.status === 403) pass('onboard-auth', 'anon → /providers/onboard rejected', `${p.status}`);
+    else fail('onboard-auth', 'anon → /providers/onboard rejected', `expected 401/403, got ${p.status}`);
+
+    const l = await req('POST', '/api/labs/onboard', { name: 'x', groupType: 'SINGLE_SITE', adminUser: { email: 'x@curavend.test' } });
+    if (l.status === 401 || l.status === 403) pass('onboard-auth', 'anon → /labs/onboard rejected', `${l.status}`);
+    else fail('onboard-auth', 'anon → /labs/onboard rejected', `expected 401/403, got ${l.status}`);
+  } finally {
+    TOKEN = savedToken;
+  }
+}
+
+async function testPersonaOnboarding() {
+  section('8b. Persona onboarding (Provider + Lab) — creates real records');
+  // Skip by default — these create real users and trigger welcome emails.
+  // Opt in with CURAVEND_RUN_ONBOARD_TESTS=1.
+  if (process.env.CURAVEND_RUN_ONBOARD_TESTS !== '1') {
+    skip('onboard', 'POST /api/providers/onboard', 'set CURAVEND_RUN_ONBOARD_TESTS=1 to run');
+    skip('onboard', 'POST /api/labs/onboard', 'set CURAVEND_RUN_ONBOARD_TESTS=1 to run');
+    return;
+  }
+
+  const stamp = Date.now();
+
+  // Provider onboarding — verify the admin user is scoped to PROVIDER, NOT platform ADMIN.
+  const provBody = {
+    name: `Smoke Provider ${stamp}`,
+    adminUser: {
+      email: `smoke-provider-${stamp}@curavend.test`,
+      firstName: 'Smoke',
+      lastName: 'Provider',
+    },
+  };
+  const prov = await req('POST', '/api/providers/onboard', provBody);
+  if (prov.status === 201 && prov.body?.providerId && prov.body?.adminUserId) {
+    pass('onboard', 'POST /api/providers/onboard', `providerId=${prov.body.providerId.slice(0, 8)}…`);
+    // Read back the user and assert they are PROVIDER-scoped, not platform ADMIN.
+    const u = await req('GET', `/api/users/${prov.body.adminUserId}`);
+    const got = u.body?.user ?? u.body;
+    if (got?.userType === 'PROVIDER' && got?.providerId === prov.body.providerId) {
+      pass('onboard', 'provider admin scoped to PROVIDER', `role=${got.role}`);
+    } else {
+      fail(
+        'onboard',
+        'provider admin scoped to PROVIDER',
+        `userType=${got?.userType} providerId=${got?.providerId} (expected PROVIDER + matching providerId)`,
+      );
+    }
+  } else {
+    fail('onboard', 'POST /api/providers/onboard', `${prov.status} ${JSON.stringify(prov.body).slice(0, 200)}`);
+  }
+
+  // Lab onboarding
+  const labBody = {
+    name: `Smoke Lab ${stamp}`,
+    groupType: 'SINGLE_SITE',
+    adminUser: {
+      email: `smoke-lab-${stamp}@curavend.test`,
+      firstName: 'Smoke',
+      lastName: 'Lab',
+    },
+  };
+  const lab = await req('POST', '/api/labs/onboard', labBody);
+  if (lab.status === 201 && lab.body?.labGroupId && lab.body?.adminUserId) {
+    pass('onboard', 'POST /api/labs/onboard', `labGroupId=${lab.body.labGroupId.slice(0, 8)}…`);
+    const u = await req('GET', `/api/users/${lab.body.adminUserId}`);
+    const got = u.body?.user ?? u.body;
+    if (got?.userType === 'LAB' && got?.labGroupId === lab.body.labGroupId) {
+      pass('onboard', 'lab admin scoped to LAB', `role=${got.role}`);
+    } else {
+      fail(
+        'onboard',
+        'lab admin scoped to LAB',
+        `userType=${got?.userType} labGroupId=${got?.labGroupId} (expected LAB + matching labGroupId)`,
+      );
+    }
+  } else {
+    fail('onboard', 'POST /api/labs/onboard', `${lab.status} ${JSON.stringify(lab.body).slice(0, 200)}`);
+  }
+
+  // Negative: a non-admin caller (the lab admin we just created) cannot hit /onboard.
+  // Skipped here because we don't have their JWT — they're issued a temp password
+  // and would need to complete first-login + MFA. Adding it would require a
+  // dedicated test fixture, so we leave the negative test as a TODO.
+  info('Negative-path tests (non-admin → /onboard) require a fresh-login fixture; not run.');
+}
+
 async function testCmsScraperPreview() {
   section('8. CMS MCD scraper (preview-only, no DB write)');
   // Preview the seeded LCD L33718 (CPAP) — should detect HCPCs / ICDs
@@ -353,6 +447,8 @@ async function main() {
     await testDmeposCompliance();
     await testReporting();
     await testCreateRequisitionFlow();
+    await testOnboardingAuth();
+    await testPersonaOnboarding();
     await testCmsScraperPreview();
   } else {
     section('Auth-required tests skipped');

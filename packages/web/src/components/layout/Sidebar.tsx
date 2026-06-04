@@ -404,6 +404,16 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
               label: 'Manage Hospitals',
             },
             {
+              key: '/create-provider',
+              icon: <TeamOutlined />,
+              label: 'Onboard Provider Network',
+            },
+            {
+              key: '/create-lab',
+              icon: <TeamOutlined />,
+              label: 'Onboard Lab Group',
+            },
+            {
               key: '/facility-vendors',
               icon: <TeamOutlined />,
               label: 'Facility–Vendor Links',
