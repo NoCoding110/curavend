@@ -207,7 +207,8 @@ export const LandingNav: React.FC = () => {
           <Logo to="/">Curavend</Logo>
 
           <NavLinks>
-            <NavLink onClick={() => scrollTo('features')}>Features</NavLink>
+            <NavLink as={Link} to="/explore" style={{ color: '#1BAEE5' }}>Explore →</NavLink>
+            <NavLink onClick={() => scrollTo('features')}>Personas</NavLink>
             <NavLink onClick={() => scrollTo('security')}>Security</NavLink>
             <NavLink onClick={() => scrollTo('integrations')}>Integrations</NavLink>
             <DocsLink href="/docs/platform-reference.docx" download="Curavend_Platform_Page_Reference.docx">
@@ -238,7 +239,8 @@ export const LandingNav: React.FC = () => {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18 }}
           >
-            <MobileNavLink onClick={() => { scrollTo('features'); close(); }}>Features</MobileNavLink>
+            <MobileNavLink as={Link} to="/explore" onClick={close} style={{ color: '#1BAEE5' }}>Explore →</MobileNavLink>
+            <MobileNavLink onClick={() => { scrollTo('features'); close(); }}>Personas</MobileNavLink>
             <MobileNavLink onClick={() => { scrollTo('security'); close(); }}>Security</MobileNavLink>
             <MobileNavLink onClick={() => { scrollTo('integrations'); close(); }}>Integrations</MobileNavLink>
             <MobileDocsLink

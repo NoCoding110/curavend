@@ -5,7 +5,7 @@ import { AuthedBanner } from '../components/AuthedBanner';
 import { LandingNav } from '../components/LandingNav';
 import { Hero } from '../components/Hero';
 import { TrustStrip } from '../components/TrustStrip';
-import { Personas } from '../components/Personas';
+import { PersonaShowcase } from '../components/PersonaShowcase';
 import { LifecycleFlow } from '../components/LifecycleFlow';
 import { VendorRouting } from '../components/VendorRouting';
 import { PricingCascade } from '../components/PricingCascade';
@@ -59,7 +59,7 @@ export const Landing: React.FC = () => {
       <AuthedBanner />
       <Hero />
       <TrustStrip />
-      <div id="features"><Personas /></div>
+      <div id="features"><PersonaShowcase /></div>
       <LifecycleFlow />
       <VendorRouting />
       <PricingCascade />
