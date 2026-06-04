@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ActSection, ActInner, ActLabel, ActTitle, ActSub, Glow } from './shared';
-import { PERSONAS, type Persona } from '../landing/data/kb';
+import { PERSONAS, PERSONA_SIDEBARS, ROUTES, type Persona } from '../landing/data/kb';
 
 const PersonaWrap = styled(motion.article)`
   scroll-margin-top: 80px;
@@ -139,16 +139,77 @@ const PortalHead = styled.div<{ $accent: string }>`
 const SidebarList = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px 18px;
-  margin-bottom: 18px;
+  gap: 4px 12px;
+  margin-bottom: 14px;
+  max-height: 260px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+  &::-webkit-scrollbar { width: 5px; }
+  &::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
 `;
-const SidebarItem = styled.div<{ $indent?: boolean }>`
-  font-size: 12px;
-  color: rgba(255,255,255,0.65);
-  padding-left: ${p => p.$indent ? '14px' : '0'};
+const SidebarItem = styled.button<{ $active?: boolean; $accent: string }>`
+  text-align: left;
+  background: ${p => p.$active ? `${p.$accent}22` : 'transparent'};
+  border: none;
+  border-left: 2px solid ${p => p.$active ? p.$accent : 'transparent'};
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 11.5px;
+  color: ${p => p.$active ? '#fff' : 'rgba(255,255,255,0.65)'};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11.5px;
+  transition: all 0.15s;
+  &:hover {
+    background: ${p => p.$accent}14;
+    color: #fff;
+    border-left-color: ${p => p.$accent};
+  }
+`;
+const PageDetail = styled(motion.div)<{ $accent: string }>`
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  background: ${p => p.$accent}0e;
+  border: 1px solid ${p => p.$accent}33;
+  border-radius: 8px;
+`;
+const PageDetailPath = styled.code`
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  color: #1BAEE5;
+  background: rgba(27,174,229,0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+`;
+const PageDetailDesc = styled.div`
+  font-size: 13px;
+  color: rgba(255,255,255,0.78);
+  line-height: 1.55;
+`;
+const PageDetailReplaces = styled.div`
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(34,197,94,0.06);
+  border-left: 3px solid #22C55E;
+  border-radius: 4px;
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.75);
+  &::before {
+    content: 'replaces';
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: #22C55E;
+    text-transform: uppercase;
+    margin-right: 8px;
+  }
 `;
 
 const ActionsLabel = styled.div`
@@ -224,28 +285,60 @@ const Role = styled.code`
   border: 1px solid rgba(255,255,255,0.06);
 `;
 
-const PortalBlock: React.FC<{ persona: Persona }> = ({ persona }) => (
-  <PortalCard $accent={persona.accent}>
-    <PortalBar>
-      <PortalDot $c="#ff5f57" />
-      <PortalDot $c="#febc2e" />
-      <PortalDot $c="#28c840" />
-      <span style={{ marginLeft: 8 }}>curavend-web.pages.dev — {persona.name} workspace</span>
-    </PortalBar>
-    <PortalBody>
-      <PortalHead $accent={persona.accent}>{persona.portal.headline}</PortalHead>
-      <SidebarList>
-        {persona.portal.sidebar.slice(0, 12).map((s, i) => (
-          <SidebarItem key={i} $indent={s.startsWith('  ')}>{s.trim().replace(/^▾|^▸/, '').trim()}</SidebarItem>
+const PortalBlock: React.FC<{ persona: Persona }> = ({ persona }) => {
+  const sidebar = PERSONA_SIDEBARS[persona.key];
+  const [activeIdx, setActiveIdx] = useState(0);
+  const activeItem = sidebar[activeIdx];
+  const activeRoute = ROUTES.find(r => r.path === activeItem?.path);
+  return (
+    <PortalCard $accent={persona.accent}>
+      <PortalBar>
+        <PortalDot $c="#ff5f57" />
+        <PortalDot $c="#febc2e" />
+        <PortalDot $c="#28c840" />
+        <span style={{ marginLeft: 8 }}>curavend-web.pages.dev — {persona.name} workspace ({sidebar.length} pages)</span>
+      </PortalBar>
+      <PortalBody>
+        <PortalHead $accent={persona.accent}>{persona.portal.headline}</PortalHead>
+        <SidebarList>
+          {sidebar.map((s, i) => (
+            <SidebarItem
+              key={i}
+              $active={i === activeIdx}
+              $accent={persona.accent}
+              onClick={() => setActiveIdx(i)}
+              title={s.path}
+            >
+              {s.label}
+            </SidebarItem>
+          ))}
+        </SidebarList>
+        <AnimatePresence mode="wait">
+          {activeRoute && (
+            <PageDetail
+              key={activeRoute.path}
+              $accent={persona.accent}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2 }}
+            >
+              <PageDetailPath>{activeRoute.path}</PageDetailPath>
+              <PageDetailDesc>{activeRoute.description}</PageDetailDesc>
+              {activeRoute.replaces && (
+                <PageDetailReplaces>{activeRoute.replaces}</PageDetailReplaces>
+              )}
+            </PageDetail>
+          )}
+        </AnimatePresence>
+        <ActionsLabel>Primary actions</ActionsLabel>
+        {persona.portal.primaryActions.slice(0, 5).map((a, i) => (
+          <ActionRow key={i} $accent={persona.accent}>{a}</ActionRow>
         ))}
-      </SidebarList>
-      <ActionsLabel>Primary actions</ActionsLabel>
-      {persona.portal.primaryActions.slice(0, 5).map((a, i) => (
-        <ActionRow key={i} $accent={persona.accent}>{a}</ActionRow>
-      ))}
-    </PortalBody>
-  </PortalCard>
-);
+      </PortalBody>
+    </PortalCard>
+  );
+};
 
 const PersonaBlock: React.FC<{ persona: Persona; index: number }> = ({ persona, index }) => (
   <PersonaWrap

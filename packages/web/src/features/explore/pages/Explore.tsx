@@ -7,9 +7,11 @@ import { LandingFooter } from '../../landing/components/LandingFooter';
 import { ScrollProvider } from '../../landing/lib/scrollProvider';
 import { Act1Problem } from '../Act1Problem';
 import { Act2Personas } from '../Act2Personas';
+import { Act2_5RoutesAtlas } from '../Act2_5RoutesAtlas';
 import { Act3Platform } from '../Act3Platform';
 import { Act4Workflows } from '../Act4Workflows';
 import { Act5Proof } from '../Act5Proof';
+import { StatsStrip } from '../StatsStrip';
 import { PERSONAS } from '../../landing/data/kb';
 
 const GlobalExplore = createGlobalStyle`
@@ -209,6 +211,7 @@ export const Explore: React.FC = () => {
         <ActIndex>
           <ActCard href="#problem"><ActCardNum>Act 1</ActCardNum><ActCardTitle>The Problem</ActCardTitle></ActCard>
           <ActCard href="#personas"><ActCardNum>Act 2</ActCardNum><ActCardTitle>The Six Personas</ActCardTitle></ActCard>
+          <ActCard href="#atlas"><ActCardNum>Act 2.5</ActCardNum><ActCardTitle>Routes Atlas</ActCardTitle></ActCard>
           <ActCard href="#platform"><ActCardNum>Act 3</ActCardNum><ActCardTitle>The Platform</ActCardTitle></ActCard>
           <ActCard href="#workflows"><ActCardNum>Act 4</ActCardNum><ActCardTitle>Workflows in motion</ActCardTitle></ActCard>
           <ActCard href="#proof"><ActCardNum>Act 5</ActCardNum><ActCardTitle>Why us</ActCardTitle></ActCard>
@@ -223,10 +226,13 @@ export const Explore: React.FC = () => {
             </ChipLink>
           ))}
         </PersonaChips>
+
+        <StatsStrip />
       </Hero>
 
       <Act1Problem />
       <Act2Personas />
+      <Act2_5RoutesAtlas />
       <Act3Platform />
       <Act4Workflows />
       <Act5Proof />

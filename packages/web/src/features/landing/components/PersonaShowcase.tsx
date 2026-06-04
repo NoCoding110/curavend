@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Section, SectionInner, SectionLabel, SectionHeading, SectionBody } from '../lib/primitives';
 import { EASE_OUT_EXPO } from '../lib/motionTokens';
-import { PERSONAS, type PersonaKey } from '../data/kb';
+import { PERSONAS, PERSONA_SIDEBARS, ROUTES, type PersonaKey } from '../data/kb';
 
 const Wrap = styled.div`
   margin-top: 56px;
@@ -137,12 +137,22 @@ const MockSidebar = styled.div<{ $accent: string }>`
   color: rgba(255,255,255,0.55);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 `;
-const MockNav = styled.div<{ $active?: boolean; $accent?: string }>`
+const MockNav = styled.button<{ $active?: boolean; $accent?: string }>`
+  text-align: left;
+  font: inherit;
   padding: 5px 8px;
   border-radius: 5px;
   background: ${p => p.$active ? `${p.$accent}1F` : 'transparent'};
   color: ${p => p.$active ? '#fff' : 'rgba(255,255,255,0.55)'};
+  border: none;
   border-left: 2px solid ${p => p.$active ? p.$accent : 'transparent'};
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  &:hover {
+    background: ${p => p.$accent}14;
+    color: #fff;
+    border-left-color: ${p => p.$accent};
+  }
 `;
 const MockContent = styled.div`
   padding: 18px;
@@ -266,10 +276,47 @@ const fadeUp = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE_OUT_EXPO } },
 };
 
+const DetailCard = styled(motion.div)<{ $accent: string }>`
+  margin: 10px 0;
+  padding: 12px 14px;
+  background: ${p => p.$accent}10;
+  border: 1px solid ${p => p.$accent}40;
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.78);
+  line-height: 1.55;
+`;
+const DetailPath = styled.code`
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  display: block;
+  margin-bottom: 6px;
+`;
+const DetailReplaces = styled.div<{ $accent: string }>`
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: rgba(34,197,94,0.08);
+  border-left: 2px solid #22C55E;
+  border-radius: 4px;
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.7);
+  &::before {
+    content: 'replaces ';
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: #22C55E;
+    text-transform: uppercase;
+  }
+`;
+
 /* ─── Portal mockup tuned per-persona ───────────────────────────────────── */
 const PortalMock: React.FC<{ persona: typeof PERSONAS[0] }> = ({ persona }) => {
-  const sidebarItems = persona.portal.sidebar.slice(0, 9);
-  const rows = persona.portal.primaryActions.slice(0, 4);
+  const sidebarItems = PERSONA_SIDEBARS[persona.key].slice(0, 10);
+  const [activeIdx, setActiveIdx] = useState(1);
+  const activeItem = sidebarItems[activeIdx];
+  const activeRoute = ROUTES.find(r => r.path === activeItem?.path);
   return (
     <MockPortal $accent={persona.accent}>
       <MockBar>
@@ -280,11 +327,37 @@ const PortalMock: React.FC<{ persona: typeof PERSONAS[0] }> = ({ persona }) => {
       <MockBody>
         <MockSidebar $accent={persona.accent}>
           {sidebarItems.map((item, i) => (
-            <MockNav key={i} $active={i === 1} $accent={persona.accent}>{item}</MockNav>
+            <MockNav
+              key={i}
+              $active={i === activeIdx}
+              $accent={persona.accent}
+              onClick={() => setActiveIdx(i)}
+              title={item.path}
+            >
+              {item.label}
+            </MockNav>
           ))}
         </MockSidebar>
         <MockContent>
-          <MockHeadline>{persona.portal.headline}</MockHeadline>
+          <MockHeadline>{activeItem?.label ?? persona.portal.headline}</MockHeadline>
+          <AnimatePresence mode="wait">
+            {activeRoute && (
+              <DetailCard
+                key={activeRoute.path}
+                $accent={persona.accent}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.22 }}
+              >
+                <DetailPath>{activeRoute.path}</DetailPath>
+                {activeRoute.description}
+                {activeRoute.replaces && (
+                  <DetailReplaces $accent={persona.accent}>{activeRoute.replaces}</DetailReplaces>
+                )}
+              </DetailCard>
+            )}
+          </AnimatePresence>
           <MockGrid>
             {persona.wins.map((w, i) => (
               <MockTile key={i} $accent={persona.accent}>
@@ -293,15 +366,6 @@ const PortalMock: React.FC<{ persona: typeof PERSONAS[0] }> = ({ persona }) => {
               </MockTile>
             ))}
           </MockGrid>
-          <MockRows>
-            {rows.map((r, i) => (
-              <MockRow key={i}>
-                <span>{r}</span>
-                <span style={{ color: persona.accent, textAlign: 'right' }}>●</span>
-                <span style={{ textAlign: 'right' }}>{i === 0 ? 'now' : `${i * 2}m`}</span>
-              </MockRow>
-            ))}
-          </MockRows>
         </MockContent>
       </MockBody>
     </MockPortal>
